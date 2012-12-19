@@ -1048,6 +1048,22 @@ static struct snd_platform_data *davinci_mcasp_set_pdata_from_of(
 		pdata->serial_dir = of_serial_dir;
 	}
 
+	ret = of_property_read_u32(np, "asp-chan-q", &pdata->asp_chan_q);
+	if (ret < 0)
+		goto nodata;
+
+	ret = of_property_read_u32(np, "ram-chan-q", &val);
+	if (ret >= 0)
+		pdata->ram_chan_q = val;
+
+	ret = of_property_read_u32(np, "tx-dma-offset", &pdata->tx_dma_offset);
+	if (ret < 0)
+		goto nodata;
+
+	ret = of_property_read_u32(np, "rx-dma-offset", &pdata->rx_dma_offset);
+	if (ret < 0)
+		goto nodata;
+
 	ret = of_property_read_u32(np, "tx-num-evt", &val);
 	if (ret >= 0)
 		pdata->txnumevt = val;
