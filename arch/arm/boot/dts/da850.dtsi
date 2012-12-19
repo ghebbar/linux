@@ -78,6 +78,10 @@
 		mcasp0: mcasp0@1d00000 {
 			compatible = "ti,da830-mcasp-audio";
 			reg = <0x100000 0x3000>;
+			asp-chan-q = <0>;       /* EVENTQ_0 */
+			tx-dma-offset = <0x2000>;
+			rx-dma-offset = <0x2000>;
+			ram-chan-q = <1>;       /* EVENTQ_1 */
 			sram-size-playback = <8192>;
 			sram-size-capture = <8192>;
 			op-mode = <0>;          /* MCASP_IIS_MODE */
