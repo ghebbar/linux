@@ -44,6 +44,26 @@
 				2 0 0 0 >;
 		};
 	};
+
+	sound {
+		compatible = "ti,da830-evm-audio";
+		ti,model = "DA850 EVM";
+		ti,audio-codec = <&tlv320aic3x>;
+		ti,mcasp-controller = <&mcasp0>;
+		ti,codec-clock-rate = <24576000>;
+		ti,audio-routing =
+			"Headphone Jack",       "HPLOUT",
+			"Headphone Jack",       "HPROUT",
+			"Line Out",             "LLOUT",
+			"Line Out",             "RLOUT",
+			"MIC3L",                "Mic Bias 2V",
+			"MIC3R",                "Mic Bias 2V",
+			"Mic Bias 2V",          "Mic Jack",
+			"LINE1L",               "Line In",
+			"LINE2L",               "Line In",
+			"LINE1R",               "Line In",
+			"LINE2R",               "Line In";
+	};
 };
 &pmx_core{
 	pinctrl-names = "default";
