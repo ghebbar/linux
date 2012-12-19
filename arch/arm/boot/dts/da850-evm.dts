@@ -32,6 +32,17 @@
 				reg = <0x18>;
 			};
 		};
+		mcasp0: mcasp0@1d00000 {
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&mcasp0_pins>;
+
+			serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
+				0 0 0 0
+				0 0 0 0
+				0 0 0 1
+				2 0 0 0 >;
+		};
 	};
 };
 &pmx_core{
@@ -43,6 +54,12 @@
 	i2c0_pins: pinmux_i2c0_pins{
 		pinctrl-single,bits = <
 			0x10 0x00002200 0x0000ff00      /* I2C0_SDA, I2C0_SCL */
+		>;
+	};
+	mcasp0_pins: pinmux_mcasp_pins {
+		pinctrl-single,bits = <
+			0x0 0x01111111  0x0fffffff
+			0x4 0x00011000  0x000ff000
 		>;
 	};
 };
