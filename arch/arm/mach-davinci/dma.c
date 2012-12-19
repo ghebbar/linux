@@ -576,6 +576,16 @@ static int prepare_unused_channel_list(struct device *dev, void *data)
 	int i, ctlr;
 
 	for (i = 0; i < pdev->num_resources; i++) {
+		if (!strcmp(pdev->name, "davinci-mcasp.0")) {
+			ctlr = EDMA_CTLR(1);
+			clear_bit(EDMA_CHAN_SLOT(1),
+					edma_cc[ctlr]->edma_unused);
+
+			ctlr = EDMA_CTLR(0);
+			clear_bit(EDMA_CHAN_SLOT(0),
+					edma_cc[ctlr]->edma_unused);
+		}
+
 		if ((pdev->resource[i].flags & IORESOURCE_DMA) &&
 				(int)pdev->resource[i].start >= 0) {
 			ctlr = EDMA_CTLR(pdev->resource[i].start);
