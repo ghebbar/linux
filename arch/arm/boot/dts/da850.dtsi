@@ -75,5 +75,17 @@
 			#size-cells = <0>;
 			status = "disabled";
 		};
+		mcasp0: mcasp0@1d00000 {
+			compatible = "ti,da830-mcasp-audio";
+			reg = <0x100000 0x3000>;
+			sram-size-playback = <8192>;
+			sram-size-capture = <8192>;
+			op-mode = <0>;          /* MCASP_IIS_MODE */
+			tdm-slots = <2>;
+			num-serializer = <16>;
+			tx-num-evt = <1>;
+			rx-num-evt = <1>;
+			status = "disabled";
+		};
 	};
 };
