@@ -1171,13 +1171,10 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 
 	/* first TX, then RX */
 	res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
-	if (!res) {
+	if (!res)
 		dev_err(&pdev->dev, "no DMA resource\n");
-		ret = -ENODEV;
-		goto err_release_clk;
-	}
 
-	dma_data->channel = res->start;
+	dma_data->channel = 1;
 
 	dma_data = &dev->dma_params[SNDRV_PCM_STREAM_CAPTURE];
 	dma_data->asp_chan_q = pdata->asp_chan_q;
@@ -1188,13 +1185,10 @@ static int davinci_mcasp_probe(struct platform_device *pdev)
 							mem->start);
 
 	res = platform_get_resource(pdev, IORESOURCE_DMA, 1);
-	if (!res) {
+	if (!res)
 		dev_err(&pdev->dev, "no DMA resource\n");
-		ret = -ENODEV;
-		goto err_release_clk;
-	}
 
-	dma_data->channel = res->start;
+	dma_data->channel = 0;
 	dev_set_drvdata(&pdev->dev, dev);
 	ret = snd_soc_register_dai(&pdev->dev, &davinci_mcasp_dai[pdata->op_mode]);
 
