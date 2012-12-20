@@ -32,6 +32,7 @@
 #include <sound/pcm_params.h>
 #include <sound/initval.h>
 #include <sound/soc.h>
+#include <mach/sram.h>
 
 #include "davinci-pcm.h"
 #include "davinci-mcasp.h"
@@ -1079,6 +1080,8 @@ static struct snd_platform_data *davinci_mcasp_set_pdata_from_of(
 	ret = of_property_read_u32(np, "sram-size-capture", &val);
 	if (ret >= 0)
 		pdata->sram_size_capture = val;
+
+	pdata->sram_pool = sram_get_gen_pool();
 
 	return  pdata;
 
