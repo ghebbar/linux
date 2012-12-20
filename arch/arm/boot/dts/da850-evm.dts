@@ -24,5 +24,20 @@
 		serial2: serial@1d0d000 {
 			status = "okay";
 		};
+		i2c0@1c22000 {
+			status = "okay";
+		};
+	};
+};
+&pmx_core{
+	pinctrl-names = "default";
+	pinctrl-0 = <
+		&i2c0_pins
+	>;
+
+	i2c0_pins: pinmux_i2c0_pins{
+		pinctrl-single,bits = <
+			0x10 0x00002200 0x0000ff00      /* I2C0_SDA, I2C0_SCL */
+		>;
 	};
 };
