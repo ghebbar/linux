@@ -555,6 +555,10 @@
 #define READ_LATENCY_SHDW_SHIFT				0
 #define READ_LATENCY_SHDW_MASK				(0x1f << 0)
 
+/* DDR_IO_CTRL */
+#define DDR3_RST_DEF_VAL				(0x1 << 31)
+#define DDR_IO_MDDR_SEL					(0x1 << 28)
+
 #ifndef __ASSEMBLY__
 /*
  * Structure containing shadow of important registers in EMIF

@@ -81,7 +81,7 @@ extern void am33xx_do_wfi(void);
 extern unsigned int am33xx_do_wfi_sz;
 extern unsigned int am33xx_resume_offset;
 /* ... and its pointer from SRAM after copy */
-extern void (*am33xx_do_wfi_sram)(void);
+extern void (*am33xx_do_wfi_sram)(u32 *);
 
 /* save_secure_ram_context function pointer and size, for copy to SRAM */
 extern int save_secure_ram_context(u32 *addr);

@@ -19,6 +19,21 @@
 #include "control.h"
 
 #ifndef __ASSEMBLER__
+
+/*
+ * This enum is used to index the array passed to suspend routine with
+ * parameters that vary across DDR2 and DDR3 sleep sequence.
+ *
+ * Since these are used to load into registers by suspend code,
+ * entries here must always be in sync with the suspend code
+ * in arm/mach-omap2/sleep33xx.S
+ */
+enum suspend_cfg_params {
+	MEMORY_TYPE = 0,
+	EMIF_ADDR_VIRT,
+	SUSPEND_CFG_PARAMS_END /* Must always be the last entry */
+};
+
 struct wkup_m3_context {
 	struct am33xx_ipc_data	ipc_data;
 	struct device		*dev;
@@ -52,5 +67,10 @@ extern void __iomem *am33xx_get_emif_base(void);
 
 #define AM33XX_OCMC_END			0x40310000
 #define AM33XX_EMIF_BASE		0x4C000000
+
+#define MEM_TYPE_DDR2		2
+
+#define SUSP_VTP_CTRL_DDR2	0x10117
+#define SUSP_VTP_CTRL_DDR3	0x0
 
 #endif

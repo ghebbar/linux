@@ -87,13 +87,28 @@ wait_sc_\num:
 	bne	wait_sc_\num
 	.endm
 
+/*
+ * This routine is executed from internal RAM and expects the memory type and
+ * other DDR configuration values which are different across different memory
+ * types to be passed in r0 _strictly_ in following order:
+ * 1) memory_type [r0]
+ * 2) emif_addr_virt [r1]
+ *
+ * The code loads these values taking r0 value as reference to the array in
+ * registers starting from r0, i,e memory_type goes to r0 and emif_addr_virt
+ * goes to r1. These are then saved into memory locations before proceeding with
+ * the sleep sequence and hence registers r0,r1 can still be used in the rest of
+ * the sleep code.
+ *
+ * mem_type is used to decide different suspend-resume sequences for DDR2
+ * and DDR3.
+ */
+
+
 ENTRY(am33xx_do_wfi)
 	stmfd	sp!, {r4 - r11, lr}	@ save registers on stack
-	/* Get the EMIF virtual address */
-	ldr	r0, emif_addr_func
-	blx	r0
-	/* Save it for later use */
-	str	r0, emif_addr_virt
+
+	mov	r8, r0			@ same arg list passed to us
 
 	/* This ensures isb */
 	ldr	r0, dcache_flush
@@ -102,6 +117,20 @@ ENTRY(am33xx_do_wfi)
 	/* Same as v7_flush_icache_all - saving a branch */
 	mov	r0, #0
 	mcr	p15, 0, r0, c7, c5, 0	@ I+BTB cache invalidate
+
+	ldm	r8, {r0-r1}		@ gather values passed
+
+	/* Save the values passed */
+	str	r0, mem_type
+	str	r1, emif_addr_virt
+
+	/* VTP Control value is different for DDR2 & DDR3 */
+	ldr	r1, susp_vtp_ctrl_ddr2
+	cmp	r0, #MEM_TYPE_DDR2
+	beq	mem_is_ddr2
+	ldr	r1, susp_vtp_ctrl_ddr3
+mem_is_ddr2:
+	str	r1, susp_vtp_ctrl_val
 
 	ldr	r0, emif_addr_virt
 	/* Save EMIF configuration */
@@ -134,7 +163,7 @@ ENTRY(am33xx_do_wfi)
 	/* Disable EMIF at this point */
 	ldr	r1, virt_emif_clkctrl
 	ldr	r2, [r1]
-	bic	r2, r2, #(3 << 0)
+	bic	r2, r2, #0x03
 	str	r2, [r1]
 
 	ldr	r1, virt_emif_clkctrl
@@ -151,14 +180,26 @@ wait_emif_disable:
 	 */
 	ldr	r1, virt_mpu_clkctrl
 	ldr	r2, [r1]
-	bic	r2, r2, #(3 << 0)
+	bic	r2, r2, #0x03
 	str	r2, [r1]
 
-	/* DDR3 reset override and mDDR mode selection */
-	ldr	r0, virt_ddr_io_ctrl
-	mov	r1, #(0x9 << 28)
-	str	r1, [r0]
+	/* Different sleep sequences for DDR2 and DDR3 */
+	ldr	r6, mem_type
+	cmp	r6, #MEM_TYPE_DDR2
+	beq	no_ddr3_rst_for_ddr2
 
+	/* For DDR3, hold DDR_RESET high via control module */
+	ldr	r2, virt_ddr_io_ctrl
+	ldr	r1, [r2]
+	orr	r1,r1,#DDR3_RST_DEF_VAL		@ set ddr3_rst_def_val
+	str	r1, [r2]
+
+	/* Put IO in mDDR (cmos) mode */
+	ldr	r2, virt_ddr_io_ctrl
+	ldr	r1, [r2]
+	orr	r1,r1,#DDR_IO_MDDR_SEL
+	str	r1, [r2]
+no_ddr3_rst_for_ddr2:
 	/* Weak pull down for DQ, DM */
 	ldr	r1, virt_ddr_data0_ioctrl
 	ldr	r2, susp_io_pull_data
@@ -168,6 +209,30 @@ wait_emif_disable:
 	ldr	r2, susp_io_pull_data
 	str	r2, [r1]
 
+	/* Different sleep sequences for DDR2 and DDR3 */
+	ldr	r6, mem_type
+	cmp	r6, #MEM_TYPE_DDR2
+	beq	ddr2_no_cmd_operation
+
+	/* Weak pull down for macro CMD0 */
+	ldr	r1, virt_ddr_cmd0_ioctrl
+	ldr	r2, susp_io_pull_cmd1
+	str	r2, [r1]
+
+	/* Weak pull down for macro CMD1 */
+	ldr	r1, virt_ddr_cmd1_ioctrl
+	ldr	r2, susp_io_pull_cmd1
+	str	r2, [r1]
+
+	/*
+	 * Weak pull down for macro CMD2
+	 * exception: keep DDR_RESET pullup
+	 */
+	ldr	r1, virt_ddr_cmd2_ioctrl
+	ldr	r2, susp_io_pull_cmd2
+	str	r2, [r1]
+
+ddr2_no_cmd_operation:
 	/* Disable VTP */
 	ldr	r1, virt_ddr_vtp_ctrl
 	ldr	r2, susp_vtp_ctrl_val
@@ -179,7 +244,6 @@ wait_emif_disable:
 	orr	r1, #1
 	str	r1, [r0]
 
-put_pll_bypass:
 	/* Put the PLLs in bypass mode */
 	pll_bypass	core, virt_core_clk_mode, virt_core_idlest, core_val
 	pll_bypass	ddr, virt_ddr_clk_mode, virt_ddr_idlest, ddr_val
@@ -212,7 +276,7 @@ put_pll_bypass:
 
 	/* Set MPU_CLKCTRL.MODULEMODE back to ENABLE */
 	ldr	r1, virt_mpu_clkctrl
-	mov	r2, #0x2
+	mov	r2, #0x02
 	str	r2, [r1]
 
 	/* Relock the PLLs */
@@ -228,18 +292,42 @@ put_pll_bypass:
 	bic	r1, #1
 	str	r1, [r0]
 
-	/* Restore the pull for DQ, DM */
-	ldr	r1, virt_ddr_data0_ioctrl
-	ldr	r2, resume_io_pull_data
+	ldr	r6, mem_type
+	cmp	r6, #MEM_TYPE_DDR2
+	beq	ddr2_no_mddr_change1
+
+	/* Take out IO of mDDR mode */
+	ldr	r0, virt_ddr_io_ctrl
+	ldr	r1, [r0]
+	bic	r1, r1, #DDR_IO_MDDR_SEL
+	str	r1, [r0]
+
+	/* Disable the pull for CMD2 */
+	ldr	r1, virt_ddr_cmd2_ioctrl
+	ldr	r2, resume_io_pull_cmd
+	str	r2, [r1]
+	/* Disable the pull for CMD1 */
+	ldr	r1, virt_ddr_cmd1_ioctrl
+	ldr	r2, resume_io_pull_cmd
+	str	r2, [r1]
+	/* Disable the pull for CMD0 */
+	ldr	r1, virt_ddr_cmd0_ioctrl
+	ldr	r2, resume_io_pull_cmd
 	str	r2, [r1]
 
+ddr2_no_mddr_change1:
+	/* Disable the pull for DATA1 */
 	ldr	r1, virt_ddr_data1_ioctrl
+	ldr	r2, resume_io_pull_data
+	str	r2, [r1]
+	/* Disable the pull for DATA0 */
+	ldr	r1, virt_ddr_data0_ioctrl
 	ldr	r2, resume_io_pull_data
 	str	r2, [r1]
 
 	/* Enable EMIF */
 	ldr	r1, virt_emif_clkctrl
-	mov	r2, #0x2
+	mov	r2, #0x02
 	str	r2, [r1]
 wait_emif_enable:
 	ldr	r3, [r1]
@@ -247,7 +335,6 @@ wait_emif_enable:
 	bne	wait_emif_enable
 
 	/* Enable VTP */
-config_vtp_abt:
 	ldr	r0, virt_ddr_vtp_ctrl
 	ldr	r1, [r0]
 	mov	r2, #0x0	@ clear the register
@@ -273,12 +360,8 @@ poll_vtp_ready_abt:
 	tst	r1, #(AM33XX_VTP_CTRL_READY)
 	beq	poll_vtp_ready_abt
 
-	/* DDR3 reset override and mDDR mode clear */
-	ldr	r0, virt_ddr_io_ctrl
-	mov	r1, #0
-	str	r1, [r0]
+	wait_sdram_config	1
 
-emif_self_refresh_dis:
 	/* Disable EMIF self-refresh */
 	ldr	r0, emif_addr_virt
 	add	r0, r0, #EMIF_POWER_MANAGEMENT_CONTROL
@@ -287,6 +370,19 @@ emif_self_refresh_dis:
 	str	r1, [r0]
 	str	r1, [r0, #4]
 
+	ldr	r6, mem_type
+	cmp	r6, #MEM_TYPE_DDR2
+	beq	ddr2_no_ddr3_reset1
+
+	/* For DDR3, make DDR_RESET low via control module */
+	ldr	r0, virt_ddr_io_ctrl
+	ldr	r1, [r0]
+	bic	r1, r1, #DDR3_RST_DEF_VAL
+	str	r1, [r0]
+
+	b	return_to_ddr_abt
+
+ddr2_no_ddr3_reset1:
 	/*
 	 * A write to SDRAM CONFIG register triggers
 	 * an init sequence and hence it must be done
@@ -297,6 +393,8 @@ emif_self_refresh_dis:
 	ldr r4, emif_sdcfg_val
 	str r4, [r0]
 
+return_to_ddr_abt:
+	/* Kill some time for sanity to settle in */
 	mov r0, #0x1000
 wait_abt:
 	subs   r0, r0, #1
@@ -325,16 +423,40 @@ ENTRY(am33xx_resume_from_deep_sleep)
 	bic	r1, #1
 	str	r1, [r0]
 
-	/* Restore the pull for DQ, DM */
+	ldr	r6, mem_type
+	cmp	r6, #MEM_TYPE_DDR2
+	beq	ddr2_no_mddr_change2
+
+	/* Take out IO of mDDR mode */
+	ldr	r0, phys_ddr_io_ctrl
+	ldr	r1, [r0]
+	bic	r1, r1, #DDR_IO_MDDR_SEL
+	str	r1, [r0]
+
+	/* Disable the pull for CMD2 */
+	ldr	r1, phys_ddr_cmd2_ioctrl
+	ldr	r2, resume_io_pull_cmd
+	str	r2, [r1]
+	/* Disable the pull for CMD1 */
+	ldr	r1, phys_ddr_cmd1_ioctrl
+	ldr	r2, resume_io_pull_cmd
+	str	r2, [r1]
+	/* Disable the pull for CMD0 */
+	ldr	r1, phys_ddr_cmd0_ioctrl
+	ldr	r2, resume_io_pull_cmd
+	str	r2, [r1]
+
+ddr2_no_mddr_change2:
+	/* Disable the pull for DATA1 */
+	ldr	r1, phys_ddr_data1_ioctrl
+	ldr	r2, resume_io_pull_data
+	str	r2, [r1]
+	/* Disable the pull for DATA0 */
 	ldr	r1, phys_ddr_data0_ioctrl
 	ldr	r2, resume_io_pull_data
 	str	r2, [r1]
 
-	ldr	r1, phys_ddr_data1_ioctrl
-	ldr	r2, resume_io_pull_data
-	str	r2, [r1]
-
-config_vtp:
+	/* Config VTP */
 	ldr	r0, phys_ddr_vtp_ctrl
 	ldr	r1, [r0]
 	mov	r2, #0x0	@ clear the register
@@ -360,21 +482,18 @@ poll_vtp_ready:
 	tst	r1, #AM33XX_VTP_CTRL_READY
 	beq	poll_vtp_ready
 
-	/* DDR3 reset override and mDDR mode clear */
-	ldr	r0, phys_ddr_io_ctrl
-	mov	r1, #0
-	str	r1, [r0]
-
 	/* Enable EMIF */
 	ldr	r1, phys_emif_clkctrl
-	mov	r2, #0x2
+	mov	r2, #0x02
 	str	r2, [r1]
 wait_emif_enable1:
 	ldr	r3, [r1]
 	cmp	r2, r3
 	bne	wait_emif_enable1
 
-config_emif_timings:
+	wait_sdram_config	2
+
+	/* Config EMIF Timings */
 	ldr	r3, emif_phys_addr
 	ldr	r4, emif_rd_lat_val
 	str	r4, [r3, #EMIF_DDR_PHY_CTRL_1]
@@ -397,13 +516,37 @@ config_emif_timings:
 	str	r4, [r3, #EMIF_POWER_MANAGEMENT_CTRL_SHDW]
 
 	/*
+	 * Output impedence calib needed only for DDR3
+	 * but since the initial state of this will be
+	 * disabled for DDR2 no harm in restoring the
+	 * old configuration
+	 */
+	ldr	r4, emif_zqcfg_val
+	str	r4, [r3, #EMIF_SDRAM_OUTPUT_IMPEDANCE_CALIBRATION_CONFIG]
+
+	/* Write to SDRAM_CONFIG only for DDR2 */
+	ldr	r6, mem_type
+	cmp	r6, #MEM_TYPE_DDR2
+	beq	ddr2_sdcfg
+
+	/* For DDR3, make DDR_RESET low via control module */
+	ldr	r0, phys_ddr_io_ctrl
+	ldr	r1, [r0]
+	bic	r1, r1, #DDR3_RST_DEF_VAL
+	str	r1, [r0]
+
+	b	return_to_ddr
+
+	/*
 	 * A write to SDRAM CONFIG register triggers
 	 * an init sequence and hence it must be done
-	 * at the end
+	 * at the end for DDR2
 	 */
+ddr2_sdcfg:
 	ldr	r4, emif_sdcfg_val
 	str	r4, [r3, #EMIF_SDRAM_CONFIG]
 
+return_to_ddr:
 	/* Back from la-la-land. Kill some time for sanity to settle in */
 	mov	r0, #0x1000
 wait_resume:
@@ -424,8 +567,6 @@ resume_addr:
 	.word	cpu_resume - PAGE_OFFSET + 0x80000000
 dcache_flush:
 	.word   v7_flush_dcache_all
-emif_addr_func:
-	.word	am33xx_get_emif_base
 ddr_start:
 	.word	PAGE_OFFSET
 emif_phys_addr:
@@ -492,8 +633,14 @@ virt_emif_clkctrl:
 phys_emif_clkctrl:
 	.word	(AM33XX_CM_BASE + AM33XX_CM_PER_MOD + \
 		AM33XX_CM_PER_EMIF_CLKCTRL_OFFSET)
+module_clk_mask:
+	.word	0x03
+module_clk_enable:
+	.word	0x02
 module_disabled_val:
 	.word	0x30000
+mem_type:
+	.word	0xDEADBEEF
 
 /* DDR related defines */
 virt_ddr_io_ctrl:
@@ -526,6 +673,10 @@ phys_ddr_data1_ioctrl:
 	.word	AM33XX_CTRL_BASE + AM33XX_DDR_DATA1_IOCTRL
 vtp_enable:
 	.word	AM33XX_VTP_CTRL_ENABLE
+mddr_sel:
+	.word	DDR_IO_MDDR_SEL
+ddr3_rst_def_val:
+	.word	DDR3_RST_DEF_VAL
 
 /*
  * Values recommended by the HW team. These change the pulls
@@ -542,7 +693,11 @@ resume_io_pull_data:
 resume_io_pull_cmd:
 	.word	0x18B
 susp_vtp_ctrl_val:
-	.word	0x10117
+	.word	0xDEADBEEF
+susp_vtp_ctrl_ddr2:
+	.word	SUSP_VTP_CTRL_DDR2
+susp_vtp_ctrl_ddr3:
+	.word	SUSP_VTP_CTRL_DDR3
 
 /* Placeholder for storing EMIF configuration */
 emif_addr_virt:

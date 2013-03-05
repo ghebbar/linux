@@ -26,6 +26,7 @@
 #include <linux/module.h>
 #include <linux/mailbox.h>
 #include <linux/interrupt.h>
+#include <linux/ti_emif.h>
 
 #include <asm/suspend.h>
 #include <asm/proc-fns.h>
@@ -44,7 +45,7 @@
 #include "soc.h"
 #include "sram.h"
 
-void (*am33xx_do_wfi_sram)(void);
+void (*am33xx_do_wfi_sram)(u32 *);
 
 static void __iomem *am33xx_emif_base;
 static struct powerdomain *cefuse_pwrdm, *gfx_pwrdm, *per_pwrdm;
@@ -55,9 +56,12 @@ static struct wkup_m3_context *wkup_m3;
 static DECLARE_COMPLETION(wkup_m3_sync);
 
 #ifdef CONFIG_SUSPEND
+
+u32 suspend_cfg_param_list[SUSPEND_CFG_PARAMS_END];
+
 static int am33xx_do_sram_idle(long unsigned int unused)
 {
-	am33xx_do_wfi_sram();
+	am33xx_do_wfi_sram(&suspend_cfg_param_list[0]);
 	return 0;
 }
 
@@ -406,6 +410,8 @@ void __iomem *am33xx_get_emif_base(void)
 int __init am33xx_pm_init(void)
 {
 	int ret;
+	void __iomem *base;
+	u32 reg;
 
 	if (!soc_is_am33xx())
 		return -ENODEV;
@@ -448,6 +454,15 @@ int __init am33xx_pm_init(void)
 		pr_err("Could not ioremap EMIF\n");
 		goto err;
 	}
+
+	/* Read SDRAM_CONFIG register to determine Memory Type */
+	base = am33xx_get_emif_base();
+	reg = readl(base + EMIF_SDRAM_CONFIG);
+	reg = (reg & SDRAM_TYPE_MASK) >> SDRAM_TYPE_SHIFT;
+	suspend_cfg_param_list[MEMORY_TYPE] = reg;
+
+	/* Store EMIF virtual base address for usage during assembly stage */
+	suspend_cfg_param_list[EMIF_ADDR_VIRT] = (u32)am33xx_emif_base;
 
 	(void) clkdm_for_each(omap_pm_clkdms_setup, NULL);
 
