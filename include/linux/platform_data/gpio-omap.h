@@ -24,8 +24,10 @@
 #ifndef __ASM_ARCH_OMAP_GPIO_H
 #define __ASM_ARCH_OMAP_GPIO_H
 
+#ifndef __ASSEMBLER__
 #include <linux/io.h>
 #include <linux/platform_device.h>
+#endif /* ASSEMBLER */
 
 #define OMAP1_MPUIO_BASE			0xfffb5000
 
@@ -161,6 +163,8 @@
 #define OMAP_MPUIO(nr)		(OMAP_MAX_GPIO_LINES + (nr))
 #define OMAP_GPIO_IS_MPUIO(nr)	((nr) >= OMAP_MAX_GPIO_LINES)
 
+#ifndef __ASSEMBLER__
+
 struct omap_gpio_dev_attr {
 	int bank_width;		/* GPIO bank width */
 	bool dbck_flag;		/* dbck required or not - True for OMAP3&4 */
@@ -216,5 +220,7 @@ extern void omap2_gpio_prepare_for_idle(int off_mode);
 extern void omap2_gpio_resume_after_idle(void);
 extern void omap_set_gpio_debounce(int gpio, int enable);
 extern void omap_set_gpio_debounce_time(int gpio, int enable);
+
+#endif /* ASSEMBLER */
 
 #endif
