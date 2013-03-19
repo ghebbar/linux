@@ -33,6 +33,9 @@
 #include "clock.h"
 #include "cm2xxx_3xxx.h"
 #include "cm-regbits-34xx.h"
+#include "cm-regbits-54xx.h"
+#include "cm1_54xx.h"
+#include "iomap.h"
 
 /* CM_AUTOIDLE_PLL*.AUTO_* bit values */
 #define DPLL_AUTOIDLE_DISABLE			0x0
@@ -40,6 +43,7 @@
 
 #define MAX_DPLL_WAIT_TRIES		1000000
 
+#define OMAP_1GHz			1000000000
 /* Private functions */
 
 /* _omap3_dpll_write_clken - write clken_bits arg to a DPLL's enable bits */
@@ -537,6 +541,59 @@ int omap3_noncore_dpll_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	if (!ret)
 		__clk_reparent(hw->clk, new_parent);
+
+	return 0;
+}
+
+static void omap5_mpu_dpll_update_children(unsigned long rate)
+{
+	u32 v;
+
+	/*
+	 * The interconnect frequency to EMIF should
+	 * be switched between MPU clk divide by 4 (for
+	 * frequencies higher than 920Mhz) and MPU clk divide
+	 * by 2 (for frequencies lower than or equal to 920Mhz)
+	 * Also the async bridge to ABE must be MPU clk divide
+	 * by 8 for MPU clk > 748Mhz and MPU clk divide by 4
+	 * for lower frequencies.
+	 */
+	v = __raw_readl(OMAP54XX_CM_MPU_MPU_CLKCTRL);
+	if (rate > OMAP_1GHz)
+		v |= OMAP54XX_CLKSEL_EMIF_DIV_MODE_MASK;
+	else
+		v &= ~OMAP54XX_CLKSEL_EMIF_DIV_MODE_MASK;
+
+	if (rate > OMAP_1GHz)
+		v |= OMAP54XX_CLKSEL_ABE_DIV_MODE_MASK;
+	else
+		v &= ~OMAP54XX_CLKSEL_ABE_DIV_MODE_MASK;
+	__raw_writel(v, OMAP54XX_CM_MPU_MPU_CLKCTRL);
+}
+
+/**
+ * omap5_mpu_dpll_set_rate - set non-core DPLL rate
+ * @clk: struct clk * of DPLL to set
+ * @rate: rounded target rate
+ *
+ * Set the DPLL CLKOUT to the target rate.  If the DPLL can enter
+ * low-power bypass, and the target rate is the bypass source clock
+ * rate, then configure the DPLL for bypass.  Otherwise, round the
+ * target rate if it hasn't been done already, then program and lock
+ * the DPLL.  Returns -EINVAL upon error, or 0 upon success.
+ */
+int omap5_mpu_dpll_set_rate(struct clk_hw *hw, unsigned long rate,
+					unsigned long parent_rate)
+{
+	int ret;
+
+	ret = omap3_noncore_dpll_set_rate(hw, rate, parent_rate);
+
+	if (ret)
+		return ret;
+
+	if (soc_is_omap54xx())
+		omap5_mpu_dpll_update_children(rate);
 
 	return 0;
 }
