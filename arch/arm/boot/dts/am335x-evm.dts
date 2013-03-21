@@ -102,6 +102,11 @@
 				reg = <0x48>;
 			};
 		};
+
+		rtc@44e3e000 {
+			ti,wakeup_capable;
+			ti,has_irq_wake_enb;
+		};
 	};
 
 	vbat: fixedregulator@0 {
