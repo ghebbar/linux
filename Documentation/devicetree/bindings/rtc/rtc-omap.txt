@@ -6,6 +6,10 @@ Required properties:
 - interrupts: rtc timer, alarm interrupts in order
 - interrupt-parent: phandle for the interrupt controller
 
+Optional properties:
+- ti,wakeup_capable: Inform the rtc driver that this module is wake-up
+  capable so that rtcwake and suspend tests can work.
+
 Example:
 
 rtc@1c23000 {
