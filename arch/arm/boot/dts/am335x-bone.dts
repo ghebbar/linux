@@ -36,6 +36,29 @@
 				0x60 0x17	/* gpmc_a8.gpio1_24, OUTPUT_PULLUP | MODE7 */
 			>;
 		};
+
+		cpsw_s0: cpsw_s0 {
+			pinctrl-single,pins = <
+				/* Slave 1 */
+				0x110 0x20	/* mii1_rxerr.mii1_rxerr, MODE0 | INPUT */
+				0x114 0x0	/* mii1_txen.mii1_txen, MODE0 | OUTPUT */
+				0x118 0x20	/* mii1_rxdv.mii1_rxdv, MODE0 | INPUT_PULLDOWN */
+				0x11c 0x0	/* mii1_txd3.mii1_txd3, MODE0 | OUTPUT */
+				0x120 0x0	/* mii1_txd2.mii1_txd2, MODE0 | OUTPUT */
+				0x124 0x0	/* mii1_txd1.mii1_txd1, MODE0 | OUTPUT */
+				0x128 0x0	/* mii1_txd0.mii1_txd0, MODE0 | OUTPUT */
+				0x12c 0x20	/* mii1_txclk.mii1_txclk, MODE0 | INPUT_PULLDOWN */
+				0x130 0x20	/* mii1_rxclk.mii1_rxclk, MODE0 | INPUT_PULLDOWN */
+				0x134 0x20	/* mii1_rxd3.mii1_rxd3, MODE0 | INPUT_PULLDOWN */
+				0x138 0x20	/* mii1_rxd2.mii1_rxd2, MODE0 | INPUT_PULLDOWN */
+				0x13c 0x20	/* mii1_rxd1.mii1_rxd1, MODE0 | INPUT_PULLDOWN */
+				0x140 0x20	/* mii1_rxd0.mii1_rxd0, MODE0 | INPUT_PULLDOWN */
+
+				/* MDIO */
+				0x148 0x30	/* mdio_data.mdio_data, MODE0 | INPUT_PULLUP */
+				0x14c 0x10	/* mdio_clk.mdio_clk, MODE0 | OUTPUT_PULLUP */
+			>;
+		};
 	};
 
 	ocp {
@@ -127,6 +150,11 @@
 			regulator-always-on;
 		};
 	};
+};
+
+&mac {
+	pinctrl-names = "default";
+	pinctrl-0 = <&cpsw_s0>;
 };
 
 &cpsw_emac0 {
