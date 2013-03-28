@@ -464,6 +464,13 @@ int __init am33xx_pm_init(void)
 	/* Store EMIF virtual base address for usage during assembly stage */
 	suspend_cfg_param_list[EMIF_ADDR_VIRT] = (u32)am33xx_emif_base;
 
+	/* CPU Revision */
+	reg = omap_rev();
+	if (reg == AM335X_REV_ES2_0)
+		suspend_cfg_param_list[CPU_REV] = CPU_REV_2;
+	else
+		suspend_cfg_param_list[CPU_REV] = CPU_REV_1;
+
 	(void) clkdm_for_each(omap_pm_clkdms_setup, NULL);
 
 	/* CEFUSE domain can be turned off post bootup */

@@ -93,15 +93,18 @@ wait_sc_\num:
  * types to be passed in r0 _strictly_ in following order:
  * 1) memory_type [r0]
  * 2) emif_addr_virt [r1]
+ * 4) cpu_rev [r2]
  *
  * The code loads these values taking r0 value as reference to the array in
  * registers starting from r0, i,e memory_type goes to r0 and emif_addr_virt
- * goes to r1. These are then saved into memory locations before proceeding with
- * the sleep sequence and hence registers r0,r1 can still be used in the rest of
- * the sleep code.
+ * goes to r1 and so on. These are then saved into memory locations before
+ * proceeding with the sleep sequence and hence registers r0,r1 can still be
+ * used in the rest of the sleep code.
  *
  * mem_type is used to decide different suspend-resume sequences for DDR2
  * and DDR3.
+ * cpu_rev is used to update certain steps selectively for PG2.0 in the
+ * suspend-resume sequence (like switching to LVCMOS mode is skipped for PG2.0)
  */
 
 
@@ -118,11 +121,12 @@ ENTRY(am33xx_do_wfi)
 	mov	r0, #0
 	mcr	p15, 0, r0, c7, c5, 0	@ I+BTB cache invalidate
 
-	ldm	r8, {r0-r1}		@ gather values passed
+	ldm	r8, {r0-r2}		@ gather values passed
 
 	/* Save the values passed */
 	str	r0, mem_type
 	str	r1, emif_addr_virt
+	str	r2, cpu_rev
 
 	/* VTP Control value is different for DDR2 & DDR3 */
 	ldr	r1, susp_vtp_ctrl_ddr2
@@ -194,11 +198,17 @@ wait_emif_disable:
 	orr	r1,r1,#DDR3_RST_DEF_VAL		@ set ddr3_rst_def_val
 	str	r1, [r2]
 
+	/* mddr mode selection not required for PG2.0 */
+	ldr	r6, cpu_rev
+	cmp	r6, #CPU_REV_2
+	beq	mddr_modesel_skip
+
 	/* Put IO in mDDR (cmos) mode */
 	ldr	r2, virt_ddr_io_ctrl
 	ldr	r1, [r2]
 	orr	r1,r1,#DDR_IO_MDDR_SEL
 	str	r1, [r2]
+mddr_modesel_skip:
 no_ddr3_rst_for_ddr2:
 	/* Weak pull down for DQ, DM */
 	ldr	r1, virt_ddr_data0_ioctrl
@@ -296,12 +306,18 @@ ddr2_no_cmd_operation:
 	cmp	r6, #MEM_TYPE_DDR2
 	beq	ddr2_no_mddr_change1
 
+	/* mddr mode selection not required for PG2.0 */
+	ldr     r6, cpu_rev
+	cmp     r6, #CPU_REV_2
+	beq     mddr_modesel_skip1
+
 	/* Take out IO of mDDR mode */
 	ldr	r0, virt_ddr_io_ctrl
 	ldr	r1, [r0]
 	bic	r1, r1, #DDR_IO_MDDR_SEL
 	str	r1, [r0]
 
+mddr_modesel_skip1:
 	/* Disable the pull for CMD2 */
 	ldr	r1, virt_ddr_cmd2_ioctrl
 	ldr	r2, resume_io_pull_cmd
@@ -427,12 +443,18 @@ ENTRY(am33xx_resume_from_deep_sleep)
 	cmp	r6, #MEM_TYPE_DDR2
 	beq	ddr2_no_mddr_change2
 
+	/* mddr mode selection not required for PG2.0 */
+	ldr     r6, cpu_rev
+	cmp     r6, #CPU_REV_2
+	beq     mddr_modesel_skip2
+
 	/* Take out IO of mDDR mode */
 	ldr	r0, phys_ddr_io_ctrl
 	ldr	r1, [r0]
 	bic	r1, r1, #DDR_IO_MDDR_SEL
 	str	r1, [r0]
 
+mddr_modesel_skip2:
 	/* Disable the pull for CMD2 */
 	ldr	r1, phys_ddr_cmd2_ioctrl
 	ldr	r2, resume_io_pull_cmd
@@ -640,6 +662,8 @@ module_clk_enable:
 module_disabled_val:
 	.word	0x30000
 mem_type:
+	.word	0xDEADBEEF
+cpu_rev:
 	.word	0xDEADBEEF
 
 /* DDR related defines */

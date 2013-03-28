@@ -31,6 +31,7 @@
 enum suspend_cfg_params {
 	MEMORY_TYPE = 0,
 	EMIF_ADDR_VIRT,
+	CPU_REV,
 	SUSPEND_CFG_PARAMS_END /* Must always be the last entry */
 };
 
@@ -72,5 +73,8 @@ extern void __iomem *am33xx_get_emif_base(void);
 
 #define SUSP_VTP_CTRL_DDR2	0x10117
 #define SUSP_VTP_CTRL_DDR3	0x0
+
+#define CPU_REV_1		1
+#define CPU_REV_2		2
 
 #endif
