@@ -16,6 +16,7 @@
 
 #include <linux/linkage.h>
 #include <linux/ti_emif.h>
+#include <linux/platform_data/gpio-omap.h>
 #include <asm/memory.h>
 #include <asm/assembler.h>
 
@@ -121,12 +122,15 @@ ENTRY(am33xx_do_wfi)
 	mov	r0, #0
 	mcr	p15, 0, r0, c7, c5, 0	@ I+BTB cache invalidate
 
-	ldm	r8, {r0-r2}		@ gather values passed
+	ldm	r8, {r0-r5}		@ gather values passed
 
 	/* Save the values passed */
 	str	r0, mem_type
 	str	r1, emif_addr_virt
 	str	r2, cpu_rev
+	str	r3, vtt_toggle_enabled
+	str	r4, vtt_gpio_pin
+	str	r5, gpio0_bank_virt_addr
 
 	/* VTP Control value is different for DDR2 & DDR3 */
 	ldr	r1, susp_vtp_ctrl_ddr2
@@ -243,6 +247,48 @@ no_ddr3_rst_for_ddr2:
 	str	r2, [r1]
 
 ddr2_no_cmd_operation:
+	/*
+	 * Disable VTT Regulator
+	 *
+	 * In order to keep the DDR in Self-Refresh, CKE pin needs to be Pulled
+	 * down.
+	 * The VTT regulator Pull-up is on the same CKE pin. The pull down
+	 * enabled on CKE is a weak pull down.  This weak pull-down is not
+	 * enough to pull the line below 0.75v.
+	 * Because of this, the DDR never properly goes to self refresh and
+	 * hence, low power state is not achieved.
+	 *
+	 * This issue is addressed as below on a few boards
+	 * 1. Add an external pull down on CKE pin and
+	 * 2. provide a method to disable VTT regulator (via gpio toggling)
+	 *
+	 * The 1st part of the solution is addressed in h/w. Handle the 2nd sw
+	 * part (depending on whether this toggling is requested)
+	 */
+
+	ldr	r6, vtt_toggle_enabled
+	cmp	r6, #1
+	bne	no_vtt_toggle
+
+	/* Drive GPIO0 VTT Pin LOW */
+	mov	r2, #1
+	ldr	r1, vtt_gpio_pin
+	mov	r2, r2, lsl r1
+	ldr	r0, gpio0_bank_virt_addr
+	str	r2, [r0, #OMAP4_GPIO_CLEARDATAOUT]
+
+	/* Disable GPIO0 for EVM_SK here */
+	ldr	r1, gpio0_clkctrl_virt_addr
+	ldr	r2, [r1]
+	bic	r2, r2, #(3 << 0)
+	str	r2, [r1]
+	ldr	r3, module_disabled_val
+wait_gpio0_disable:
+	ldr	r2, [r1]
+	cmp	r2, r3
+	bne	wait_gpio0_disable
+
+no_vtt_toggle:
 	/* Disable VTP */
 	ldr	r1, virt_ddr_vtp_ctrl
 	ldr	r2, susp_vtp_ctrl_val
@@ -378,6 +424,28 @@ poll_vtp_ready_abt:
 
 	wait_sdram_config	1
 
+	/* Enable VTT_Regulator */
+	ldr	r6, vtt_toggle_enabled
+	cmp	r6, #1
+	bne	no_vtt_toggle1
+
+	/* Enable GPIO0 VTT Toggle */
+	ldr	r1, gpio0_clkctrl_virt_addr
+	mov	r2, #0x2
+	str	r2, [r1]
+wait_gpio0_enable1:
+	ldr	r3, [r1]
+	cmp	r2, r3
+	bne	wait_gpio0_enable1
+
+	/* Drive GPIO0 VTT pin HIGH */
+	mov	r2, #1
+	ldr	r1, vtt_gpio_pin
+	mov	r2, r2, lsl r1
+	ldr	r0, gpio0_bank_virt_addr
+	str	r2, [r0, #OMAP4_GPIO_SETDATAOUT]
+
+no_vtt_toggle1:
 	/* Disable EMIF self-refresh */
 	ldr	r0, emif_addr_virt
 	add	r0, r0, #EMIF_POWER_MANAGEMENT_CONTROL
@@ -515,6 +583,28 @@ wait_emif_enable1:
 
 	wait_sdram_config	2
 
+	/* Enable VTT_Regulator */
+	ldr	r6, vtt_toggle_enabled
+	cmp	r6, #1
+	bne	no_vtt_toggle2
+
+	/* Enable GPIO0 for EVM-SK here */
+	ldr	r1, gpio0_clkctrl_phy_addr
+	mov	r2, #0x2
+	str	r2, [r1]
+wait_gpio0_phys_enable2:
+	ldr	r3, [r1]
+	cmp	r2, r3
+	bne	wait_gpio0_phys_enable2
+
+	/* Drive GPIO0 VTT Pin HIGH */
+	mov	r2, #1
+	ldr	r1, vtt_gpio_pin
+	mov	r2, r2, lsl r1
+	ldr	r0, gpio0_bank_phy_addr
+	str	r2, [r0, #OMAP4_GPIO_SETDATAOUT]
+
+no_vtt_toggle2:
 	/* Config EMIF Timings */
 	ldr	r3, emif_phys_addr
 	ldr	r4, emif_rd_lat_val
@@ -593,6 +683,10 @@ ddr_start:
 	.word	PAGE_OFFSET
 emif_phys_addr:
 	.word	AM33XX_EMIF_BASE
+gpio0_bank_virt_addr:
+	.word	0xDEADBEEF
+gpio0_bank_phy_addr:
+	.word	AM33XX_GPIO0_BASE
 virt_mpu_idlest:
 	.word	AM33XX_CM_IDLEST_DPLL_MPU
 virt_mpu_clk_mode:
@@ -655,6 +749,11 @@ virt_emif_clkctrl:
 phys_emif_clkctrl:
 	.word	(AM33XX_CM_BASE + AM33XX_CM_PER_MOD + \
 		AM33XX_CM_PER_EMIF_CLKCTRL_OFFSET)
+gpio0_clkctrl_virt_addr:
+	.word   AM33XX_CM_WKUP_GPIO0_CLKCTRL
+gpio0_clkctrl_phy_addr:
+	.word   (AM33XX_CM_BASE + AM33XX_CM_WKUP_MOD + \
+		AM33XX_CM_WKUP_GPIO0_CLKCTRL_OFFSET)
 module_clk_mask:
 	.word	0x03
 module_clk_enable:
@@ -665,6 +764,10 @@ mem_type:
 	.word	0xDEADBEEF
 cpu_rev:
 	.word	0xDEADBEEF
+vtt_toggle_enabled:
+	.word   0xDEADBEEF
+vtt_gpio_pin:
+	.word   0xDEADBEEF
 
 /* DDR related defines */
 virt_ddr_io_ctrl:
