@@ -32,6 +32,9 @@ enum suspend_cfg_params {
 	MEMORY_TYPE = 0,
 	EMIF_ADDR_VIRT,
 	CPU_REV,
+	VTT_TOGGLE_ENABLE,
+	VTT_GPIO_PIN,		/* required for VTT Toggle */
+	GPIO0_ADDR_VIRT,	/* required for VTT Toggle */
 	SUSPEND_CFG_PARAMS_END /* Must always be the last entry */
 };
 
@@ -68,6 +71,7 @@ extern void __iomem *am33xx_get_emif_base(void);
 
 #define AM33XX_OCMC_END			0x40310000
 #define AM33XX_EMIF_BASE		0x4C000000
+#define AM33XX_GPIO0_BASE		0x44E07000
 
 #define MEM_TYPE_DDR2		2
 

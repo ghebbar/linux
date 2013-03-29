@@ -47,10 +47,11 @@
 
 void (*am33xx_do_wfi_sram)(u32 *);
 
-static void __iomem *am33xx_emif_base;
+static void __iomem *am33xx_emif_base, *am33xx_gpio0_base;
 static struct powerdomain *cefuse_pwrdm, *gfx_pwrdm, *per_pwrdm;
 static struct clockdomain *gfx_l4ls_clkdm;
 static struct omap_hwmod *usb_oh, *cpsw_oh, *tptc0_oh, *tptc1_oh, *tptc2_oh;
+static struct omap_hwmod *gpio_oh;
 static struct wkup_m3_context *wkup_m3;
 
 static DECLARE_COMPLETION(wkup_m3_sync);
@@ -83,6 +84,9 @@ static int am33xx_pm_suspend(void)
 	omap_hwmod_enable(tptc2_oh);
 	omap_hwmod_enable(cpsw_oh);
 
+	if (suspend_cfg_param_list[VTT_TOGGLE_ENABLE])
+		omap_hwmod_enable(gpio_oh);
+
 	omap_hwmod_idle(usb_oh);
 	omap_hwmod_idle(tptc0_oh);
 	omap_hwmod_idle(tptc1_oh);
@@ -99,6 +103,9 @@ static int am33xx_pm_suspend(void)
 		pr_err("GFX domain did not transition\n");
 	else
 		pr_info("GFX domain entered low power state\n");
+
+	if (suspend_cfg_param_list[VTT_TOGGLE_ENABLE])
+		omap_hwmod_idle(gpio_oh);
 
 	/*
 	 * GFX_L4LS clock domain needs to be woken up to
@@ -407,11 +414,22 @@ void __iomem *am33xx_get_emif_base(void)
 	return am33xx_emif_base;
 }
 
+static int __init am33xx_map_gpio0(void)
+{
+	am33xx_gpio0_base = ioremap(AM33XX_GPIO0_BASE, SZ_4K);
+
+	if (!am33xx_gpio0_base)
+		return -ENOMEM;
+
+	return 0;
+}
+
 int __init am33xx_pm_init(void)
 {
 	int ret;
 	void __iomem *base;
 	u32 reg;
+	struct device_node *np;
 
 	if (!soc_is_am33xx())
 		return -ENODEV;
@@ -429,6 +447,7 @@ int __init am33xx_pm_init(void)
 	tptc1_oh	= omap_hwmod_lookup("tptc1");
 	tptc2_oh	= omap_hwmod_lookup("tptc2");
 	cpsw_oh		= omap_hwmod_lookup("cpgmac0");
+	gpio_oh		= omap_hwmod_lookup("gpio1");
 
 	gfx_pwrdm = pwrdm_lookup("gfx_pwrdm");
 	per_pwrdm = pwrdm_lookup("per_pwrdm");
@@ -436,7 +455,7 @@ int __init am33xx_pm_init(void)
 	gfx_l4ls_clkdm = clkdm_lookup("gfx_l4ls_gfx_clkdm");
 
 	if ((!usb_oh) || (!tptc0_oh) || (!tptc1_oh) || (!tptc2_oh) ||
-		(!cpsw_oh) || (!gfx_pwrdm) || (!per_pwrdm) ||
+		(!cpsw_oh) || (!gpio_oh) || (!gfx_pwrdm) || (!per_pwrdm) ||
 		(!gfx_l4ls_clkdm)) {
 		ret = -ENODEV;
 		goto err;
@@ -470,6 +489,36 @@ int __init am33xx_pm_init(void)
 		suspend_cfg_param_list[CPU_REV] = CPU_REV_2;
 	else
 		suspend_cfg_param_list[CPU_REV] = CPU_REV_1;
+
+	/*
+	 * Check whether board requires VTT to be toggled during suspend/resume.
+	 * Disable VTT toggle by default. Enable only when required DT node(s)
+	 * are found.
+	 */
+	suspend_cfg_param_list[VTT_TOGGLE_ENABLE] = false;
+
+	np = of_find_compatible_node(NULL, NULL, "ti,am3353-wkup-m3");
+	if (np) {
+		int vtt_gpio_pin;
+		if (of_find_property(np, "ti,needs_vtt_toggle", NULL) &&
+		    (!(of_property_read_u32(np, "vtt-gpio-pin",
+							&vtt_gpio_pin)))) {
+			if (vtt_gpio_pin >= 0 && vtt_gpio_pin <= 31) {
+				if (am33xx_map_gpio0()) {
+					pr_err("Could not ioremap GPIO0\n");
+					goto vtt_toggle_end;
+				}
+
+				suspend_cfg_param_list[VTT_TOGGLE_ENABLE] =
+							true;
+				suspend_cfg_param_list[VTT_GPIO_PIN] =
+							vtt_gpio_pin;
+				suspend_cfg_param_list[GPIO0_ADDR_VIRT] =
+							(u32)am33xx_gpio0_base;
+			}
+		}
+	}
+vtt_toggle_end:
 
 	(void) clkdm_for_each(omap_pm_clkdms_setup, NULL);
 
