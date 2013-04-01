@@ -152,6 +152,10 @@ static void delete_gpio_led(struct gpio_led_data *led)
 
 struct gpio_leds_priv {
 	int num_leds;
+	/* Two optional pin states - default & sleep */
+	struct pinctrl		*pinctrl;
+	struct pinctrl_state	*pins_default;
+	struct pinctrl_state	*pins_sleep;
 	struct gpio_led_data leds[];
 };
 
@@ -159,6 +163,43 @@ static inline int sizeof_gpio_leds_priv(int num_leds)
 {
 	return sizeof(struct gpio_leds_priv) +
 		(sizeof(struct gpio_led_data) * num_leds);
+}
+
+/* Use pinctrl API for gpio configuration */
+static void gpio_led_get_pinctrl(struct gpio_leds_priv *priv,
+				struct platform_device *pdev)
+{
+	priv->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (!IS_ERR(priv->pinctrl)) {
+		priv->pins_default = pinctrl_lookup_state(priv->pinctrl,
+						PINCTRL_STATE_DEFAULT);
+		/* enable pins to be muxed in and configured */
+		if (IS_ERR(priv->pins_default))
+			dev_dbg(&pdev->dev,
+				 "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(priv->pinctrl,
+						 priv->pins_default))
+				dev_err(&pdev->dev,
+					"could not set default pins\n");
+
+		priv->pins_sleep = pinctrl_lookup_state(priv->pinctrl,
+						PINCTRL_STATE_SLEEP);
+		if (IS_ERR(priv->pins_sleep))
+			dev_dbg(&pdev->dev,
+				 "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		priv->pins_default = ERR_PTR(-ENODATA);
+		priv->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_dbg(&pdev->dev,
+			 "pins are not configured from the driver\n");
+	}
 }
 
 /* Code to create from OpenFirmware platform devices */
@@ -182,6 +223,8 @@ static struct gpio_leds_priv *gpio_leds_create_of(struct platform_device *pdev)
 			GFP_KERNEL);
 	if (!priv)
 		return ERR_PTR(-ENOMEM);
+
+	gpio_led_get_pinctrl(priv, pdev);
 
 	for_each_child_of_node(np, child) {
 		struct gpio_led led = {};
@@ -235,13 +278,7 @@ static int gpio_led_probe(struct platform_device *pdev)
 {
 	struct gpio_led_platform_data *pdata = pdev->dev.platform_data;
 	struct gpio_leds_priv *priv;
-	struct pinctrl *pinctrl;
 	int i, ret = 0;
-
-	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
-	if (IS_ERR(pinctrl))
-		dev_warn(&pdev->dev,
-			"pins are not configured from the driver\n");
 
 	if (pdata && pdata->num_leds) {
 		priv = devm_kzalloc(&pdev->dev,
@@ -249,6 +286,8 @@ static int gpio_led_probe(struct platform_device *pdev)
 					GFP_KERNEL);
 		if (!priv)
 			return -ENOMEM;
+
+		gpio_led_get_pinctrl(priv, pdev);
 
 		priv->num_leds = pdata->num_leds;
 		for (i = 0; i < priv->num_leds; i++) {
@@ -286,6 +325,32 @@ static int gpio_led_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int gpio_led_suspend(struct platform_device *pdev,
+					pm_message_t state)
+{
+	struct gpio_leds_priv *priv = platform_get_drvdata(pdev);
+
+	/* Optionally let pins go into sleep states */
+	if (!IS_ERR(priv->pins_sleep))
+		if (pinctrl_select_state(priv->pinctrl, priv->pins_sleep))
+			dev_err(&pdev->dev,
+				"could not set pins to sleep state\n");
+
+	return 0;
+}
+
+static int gpio_led_resume(struct platform_device *pdev)
+{
+	struct gpio_leds_priv *priv = platform_get_drvdata(pdev);
+
+	/* Optionaly enable pins to be muxed in and configured */
+	if (!IS_ERR(priv->pins_default))
+		if (pinctrl_select_state(priv->pinctrl, priv->pins_default))
+			dev_err(&pdev->dev, "could not set default pins\n");
+
+	return 0;
+}
+
 static struct platform_driver gpio_led_driver = {
 	.probe		= gpio_led_probe,
 	.remove		= gpio_led_remove,
@@ -294,6 +359,10 @@ static struct platform_driver gpio_led_driver = {
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(of_gpio_leds_match),
 	},
+#ifdef CONFIG_PM
+	.suspend = gpio_led_suspend,
+	.resume = gpio_led_resume,
+#endif
 };
 
 module_platform_driver(gpio_led_driver);
