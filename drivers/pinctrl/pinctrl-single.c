@@ -879,6 +879,29 @@ static void pcs_free_resources(struct pcs_device *pcs)
 
 static struct of_device_id pcs_of_match[];
 
+static int pinctrl_single_suspend(struct platform_device *pdev,
+					pm_message_t state)
+{
+	struct pcs_device *pcs;
+
+	pcs = platform_get_drvdata(pdev);
+	if (!pcs)
+		return -EINVAL;
+
+	return pinctrl_force_sleep(pcs->pctl);
+}
+
+static int pinctrl_single_resume(struct platform_device *pdev)
+{
+	struct pcs_device *pcs;
+
+	pcs = platform_get_drvdata(pdev);
+	if (!pcs)
+		return -EINVAL;
+
+	return pinctrl_force_default(pcs->pctl);
+}
+
 static int pcs_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -1012,6 +1035,10 @@ static struct platform_driver pcs_driver = {
 		.name		= DRIVER_NAME,
 		.of_match_table	= pcs_of_match,
 	},
+#ifdef CONFIG_PM
+	.suspend = pinctrl_single_suspend,
+	.resume = pinctrl_single_resume,
+#endif
 };
 
 module_platform_driver(pcs_driver);
