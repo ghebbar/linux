@@ -26,6 +26,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
+#include <linux/pinctrl/consumer.h>
 
 struct matrix_keypad {
 	const struct matrix_keypad_platform_data *pdata;
@@ -40,6 +41,10 @@ struct matrix_keypad {
 	bool scan_pending;
 	bool stopped;
 	bool gpio_all_disabled;
+	/* Two optional pin states - default & sleep */
+	struct pinctrl		*pinctrl;
+	struct pinctrl_state	*pins_default;
+	struct pinctrl_state	*pins_sleep;
 };
 
 /*
@@ -280,6 +285,13 @@ static int matrix_keypad_suspend(struct device *dev)
 
 	if (device_may_wakeup(&pdev->dev))
 		matrix_keypad_enable_wakeup(keypad);
+	else
+		/* Optionally let pins go into sleep states */
+		if (!IS_ERR(keypad->pins_sleep))
+			if (pinctrl_select_state(keypad->pinctrl,
+						 keypad->pins_sleep))
+				dev_err(dev,
+					"could not set pins to sleep state\n");
 
 	return 0;
 }
@@ -291,6 +303,12 @@ static int matrix_keypad_resume(struct device *dev)
 
 	if (device_may_wakeup(&pdev->dev))
 		matrix_keypad_disable_wakeup(keypad);
+	else
+		/* Optionaly enable pins to be muxed in and configured */
+		if (!IS_ERR(keypad->pins_default))
+			if (pinctrl_select_state(keypad->pinctrl,
+						 keypad->pins_default))
+				dev_err(dev, "could not set default pins\n");
 
 	matrix_keypad_start(keypad->input_dev);
 
@@ -489,6 +507,36 @@ static int matrix_keypad_probe(struct platform_device *pdev)
 	if (!keypad || !input_dev) {
 		err = -ENOMEM;
 		goto err_free_mem;
+	}
+
+	keypad->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (!IS_ERR(keypad->pinctrl)) {
+		keypad->pins_default = pinctrl_lookup_state(keypad->pinctrl,
+						PINCTRL_STATE_DEFAULT);
+		/* enable pins to be muxed in and configured */
+		if (IS_ERR(keypad->pins_default))
+			dev_dbg(&pdev->dev, "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(keypad->pinctrl,
+						 keypad->pins_default))
+				dev_err(&pdev->dev,
+					"could not set default pins\n");
+
+		keypad->pins_sleep = pinctrl_lookup_state(keypad->pinctrl,
+						PINCTRL_STATE_SLEEP);
+		if (IS_ERR(keypad->pins_sleep))
+			dev_dbg(&pdev->dev, "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		keypad->pins_default = ERR_PTR(-ENODATA);
+		keypad->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_dbg(&pdev->dev,
+			 "pins are not configured from the driver\n");
 	}
 
 	keypad->input_dev = input_dev;
