@@ -28,6 +28,7 @@
 #include <linux/gpio.h>
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/spinlock.h>
 
 struct gpio_button_data {
@@ -47,6 +48,10 @@ struct gpio_keys_drvdata {
 	struct input_dev *input;
 	struct mutex disable_lock;
 	struct gpio_button_data data[0];
+	/* Two optional pin states - default & sleep */
+	struct pinctrl		*pinctrl;
+	struct pinctrl_state	*pins_default;
+	struct pinctrl_state	*pins_sleep;
 };
 
 /*
@@ -709,6 +714,35 @@ static int gpio_keys_probe(struct platform_device *pdev)
 		goto fail1;
 	}
 
+	ddata->pinctrl = devm_pinctrl_get(dev);
+	if (!IS_ERR(ddata->pinctrl)) {
+		ddata->pins_default = pinctrl_lookup_state(ddata->pinctrl,
+						PINCTRL_STATE_DEFAULT);
+		/* enable pins to be muxed in and configured */
+		if (IS_ERR(ddata->pins_default))
+			dev_dbg(dev, "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(ddata->pinctrl,
+						 ddata->pins_default))
+				dev_err(dev,
+					"could not set default pinstate\n");
+
+		ddata->pins_sleep = pinctrl_lookup_state(ddata->pinctrl,
+						PINCTRL_STATE_SLEEP);
+		if (IS_ERR(ddata->pins_sleep))
+			dev_dbg(dev, "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		ddata->pins_default = ERR_PTR(-ENODATA);
+		ddata->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_dbg(dev, "pins are not configured from the driver\n");
+	}
+
 	ddata->pdata = pdata;
 	ddata->input = input;
 	mutex_init(&ddata->disable_lock);
@@ -816,6 +850,13 @@ static int gpio_keys_suspend(struct device *dev)
 				enable_irq_wake(bdata->irq);
 		}
 	} else {
+		/* Optionally let pins go into sleep states */
+		if (!IS_ERR(ddata->pins_sleep))
+			if (pinctrl_select_state(ddata->pinctrl,
+						 ddata->pins_sleep))
+				dev_err(dev,
+					"could not set pins to sleep state\n");
+
 		mutex_lock(&input->mutex);
 		if (input->users)
 			gpio_keys_close(input);
@@ -839,6 +880,12 @@ static int gpio_keys_resume(struct device *dev)
 				disable_irq_wake(bdata->irq);
 		}
 	} else {
+		/* Optionaly enable pins to be muxed in and configured */
+		if (!IS_ERR(ddata->pins_default))
+			if (pinctrl_select_state(ddata->pinctrl,
+						 ddata->pins_default))
+				dev_err(dev, "could not set default pins\n");
+
 		mutex_lock(&input->mutex);
 		if (input->users)
 			error = gpio_keys_open(input);
