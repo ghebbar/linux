@@ -39,6 +39,7 @@
 #include <linux/module.h>
 #include <linux/usb/nop-usb-xceiv.h>
 #include <linux/platform_data/usb-omap.h>
+#include <linux/pinctrl/consumer.h>
 
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -124,6 +125,11 @@ struct dsps_glue {
 	struct timer_list timer[2];	/* otg_workaround timer */
 	unsigned long last_timer[2];    /* last timer data for each instance */
 	u32 __iomem *usb_ctrl[2];
+
+	/* two pin states - default, sleep */
+	struct pinctrl			*pinctrl;
+	struct pinctrl_state		*pins_default;
+	struct pinctrl_state		*pins_sleep;
 };
 
 #define	DSPS_AM33XX_CONTROL_MODULE_PHYS_0	0x44e10620
@@ -637,6 +643,36 @@ static int dsps_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err1;
 	}
+
+	glue->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (!IS_ERR(glue->pinctrl)) {
+		glue->pins_default = pinctrl_lookup_state(glue->pinctrl,
+							 PINCTRL_STATE_DEFAULT);
+		if (IS_ERR(glue->pins_default))
+			dev_dbg(&pdev->dev, "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(glue->pinctrl,
+						 glue->pins_default))
+				dev_err(&pdev->dev,
+					"could not set default pinstate\n");
+
+		glue->pins_sleep = pinctrl_lookup_state(glue->pinctrl,
+						       PINCTRL_STATE_SLEEP);
+		if (IS_ERR(glue->pins_sleep))
+			dev_dbg(&pdev->dev, "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		glue->pins_default = ERR_PTR(-ENODATA);
+		glue->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_dbg(&pdev->dev, "did not get pins for i2c error: %li\n",
+			 PTR_ERR(glue->pinctrl));
+	}
+
 	platform_set_drvdata(pdev, glue);
 
 	/* enable the usbss clocks */
@@ -701,6 +737,11 @@ static int dsps_suspend(struct device *dev)
 	for (i = 0; i < wrp->instances; i++)
 		musb_dsps_phy_control(glue, i, 0);
 
+	/* Optionally let pins go into sleep states */
+	if (!IS_ERR(glue->pins_sleep))
+		if (pinctrl_select_state(glue->pinctrl, glue->pins_sleep))
+			dev_err(dev, "could not set pins to sleep state\n");
+
 	return 0;
 }
 
@@ -710,6 +751,11 @@ static int dsps_resume(struct device *dev)
 	struct dsps_glue *glue = platform_get_drvdata(pdev);
 	const struct dsps_musb_wrapper *wrp = glue->wrp;
 	int i;
+
+	/* Optionaly enable pins to be muxed in and configured */
+	if (!IS_ERR(glue->pins_default))
+		if (pinctrl_select_state(glue->pinctrl, glue->pins_default))
+			dev_err(dev, "could not set default pins\n");
 
 	for (i = 0; i < wrp->instances; i++)
 		musb_dsps_phy_control(glue, i, 1);
