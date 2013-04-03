@@ -183,6 +183,12 @@ struct omap_hsmmc_host {
 	struct omap_hsmmc_next	next_data;
 
 	struct	omap_mmc_platform_data	*pdata;
+
+	/* Three pin states - default, idle & sleep */
+	struct pinctrl			*pinctrl;
+	struct pinctrl_state		*pins_default;
+	struct pinctrl_state		*pins_idle;
+	struct pinctrl_state		*pins_sleep;
 };
 
 static int omap_hsmmc_card_detect(struct device *dev, int slot)
@@ -1769,7 +1775,6 @@ static int omap_hsmmc_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	dma_cap_mask_t mask;
 	unsigned tx_req, rx_req;
-	struct pinctrl *pinctrl;
 
 	match = of_match_device(of_match_ptr(omap_mmc_of_match), &pdev->dev);
 	if (match) {
@@ -1972,10 +1977,46 @@ static int omap_hsmmc_probe(struct platform_device *pdev)
 
 	omap_hsmmc_disable_irq(host);
 
-	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
-	if (IS_ERR(pinctrl))
-		dev_warn(&pdev->dev,
-			"pins are not configured from the driver\n");
+	host->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (!IS_ERR(host->pinctrl)) {
+		host->pins_default = pinctrl_lookup_state(host->pinctrl,
+							PINCTRL_STATE_DEFAULT);
+		if (IS_ERR(host->pins_default))
+			dev_dbg(&pdev->dev, "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(host->pinctrl,
+						 host->pins_default))
+				dev_err(&pdev->dev,
+					"could not set default pinstate\n");
+
+		host->pins_idle = pinctrl_lookup_state(host->pinctrl,
+							PINCTRL_STATE_IDLE);
+		if (IS_ERR(host->pins_idle))
+			dev_dbg(&pdev->dev, "could not get idle pinstate\n");
+		else
+			/* If possible, let's idle until the first transfer */
+			if (pinctrl_select_state(host->pinctrl,
+						 host->pins_idle))
+				dev_err(&pdev->dev,
+					"could not set idle pinstate\n");
+
+		host->pins_sleep = pinctrl_lookup_state(host->pinctrl,
+							PINCTRL_STATE_SLEEP);
+		if (IS_ERR(host->pins_sleep))
+			dev_dbg(&pdev->dev, "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		host->pins_default = ERR_PTR(-ENODATA);
+		host->pins_idle = ERR_PTR(-ENODATA);
+		host->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_warn(&pdev->dev, "did not get pins for i2c error: %li\n",
+			 PTR_ERR(host->pinctrl));
+	}
 
 	omap_hsmmc_protect_card(host);
 
@@ -2125,6 +2166,12 @@ static int omap_hsmmc_suspend(struct device *dev)
 		clk_disable_unprepare(host->dbclk);
 err:
 	pm_runtime_put_sync(host->dev);
+
+	/* Optionally let pins go into sleep states */
+	if (!IS_ERR(host->pins_sleep))
+		if (pinctrl_select_state(host->pinctrl, host->pins_sleep))
+			dev_err(dev, "could not set pins to sleep state\n");
+
 	return ret;
 }
 
@@ -2141,6 +2188,16 @@ static int omap_hsmmc_resume(struct device *dev)
 		return 0;
 
 	pm_runtime_get_sync(host->dev);
+
+	/* First go to the default state */
+	if (!IS_ERR(host->pins_default))
+		if (pinctrl_select_state(host->pinctrl, host->pins_default))
+			dev_err(host->dev, "could not set pins to default state\n");
+
+	/* Then let's idle the pins until the next transfer happens */
+	if (!IS_ERR(host->pins_idle))
+		if (pinctrl_select_state(host->pinctrl, host->pins_idle))
+			dev_err(host->dev, "couldn't set pins to idle state\n");
 
 	if (host->dbclk)
 		clk_prepare_enable(host->dbclk);
@@ -2175,6 +2232,12 @@ static int omap_hsmmc_runtime_suspend(struct device *dev)
 
 	host = platform_get_drvdata(to_platform_device(dev));
 	omap_hsmmc_context_save(host);
+
+	/* Optionally let pins go into sleep states */
+	if (!IS_ERR(host->pins_idle))
+		if (pinctrl_select_state(host->pinctrl, host->pins_idle))
+			dev_err(dev, "could not set pins to idle state\n");
+
 	dev_dbg(dev, "disabled\n");
 
 	return 0;
@@ -2185,6 +2248,12 @@ static int omap_hsmmc_runtime_resume(struct device *dev)
 	struct omap_hsmmc_host *host;
 
 	host = platform_get_drvdata(to_platform_device(dev));
+
+	/* Optionaly enable pins to be muxed in and configured */
+	if (!IS_ERR(host->pins_default))
+		if (pinctrl_select_state(host->pinctrl, host->pins_default))
+			dev_err(host->dev, "could not set default pins\n");
+
 	omap_hsmmc_context_restore(host);
 	dev_dbg(dev, "enabled\n");
 
