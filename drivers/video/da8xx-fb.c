@@ -36,6 +36,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/lcm.h>
+#include <linux/pinctrl/consumer.h>
 #include <video/da8xx-fb.h>
 #include <asm/div64.h>
 
@@ -182,6 +183,11 @@ struct da8xx_fb_par {
 #endif
 	void (*panel_power_ctrl)(int);
 	u32 pseudo_palette[16];
+
+	/* two pin states - default, sleep */
+	struct pinctrl			*pinctrl;
+	struct pinctrl_state		*pins_default;
+	struct pinctrl_state		*pins_sleep;
 };
 
 /* Variable Screen Information */
@@ -1306,6 +1312,36 @@ static int fb_probe(struct platform_device *device)
 	par->lcd_fck_rate = clk_get_rate(fb_clk);
 #endif
 	par->pxl_clk = lcdc_info->pixclock;
+
+	par->pinctrl = devm_pinctrl_get(&device->dev);
+	if (!IS_ERR(par->pinctrl)) {
+		par->pins_default = pinctrl_lookup_state(par->pinctrl,
+							 PINCTRL_STATE_DEFAULT);
+		if (IS_ERR(par->pins_default))
+			dev_dbg(&device->dev, "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(par->pinctrl,
+						 par->pins_default))
+				dev_err(&device->dev,
+					"could not set default pinstate\n");
+
+		par->pins_sleep = pinctrl_lookup_state(par->pinctrl,
+						       PINCTRL_STATE_SLEEP);
+		if (IS_ERR(par->pins_sleep))
+			dev_dbg(&device->dev, "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		par->pins_default = ERR_PTR(-ENODATA);
+		par->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_dbg(&device->dev, "did not get pins for i2c error: %li\n",
+			 PTR_ERR(par->pinctrl));
+	}
+
 	if (fb_pdata->panel_power_ctrl) {
 		par->panel_power_ctrl = fb_pdata->panel_power_ctrl;
 		par->panel_power_ctrl(1);
@@ -1551,6 +1587,12 @@ static int fb_suspend(struct platform_device *dev, pm_message_t state)
 	pm_runtime_put_sync(&dev->dev);
 	console_unlock();
 
+	/* Optionally let pins go into sleep states */
+	if (!IS_ERR(par->pins_sleep))
+		if (pinctrl_select_state(par->pinctrl, par->pins_sleep))
+			dev_err(&dev->dev,
+				"could not set pins to sleep state\n");
+
 	return 0;
 }
 static int fb_resume(struct platform_device *dev)
@@ -1560,6 +1602,12 @@ static int fb_resume(struct platform_device *dev)
 
 	console_lock();
 	pm_runtime_get_sync(&dev->dev);
+
+	/* Optionaly enable pins to be muxed in and configured */
+	if (!IS_ERR(par->pins_default))
+		if (pinctrl_select_state(par->pinctrl, par->pins_default))
+			dev_err(&dev->dev, "could not set default pins\n");
+
 	lcd_context_restore();
 	if (par->blank == FB_BLANK_UNBLANK) {
 		lcd_enable_raster();
