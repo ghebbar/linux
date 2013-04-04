@@ -52,6 +52,11 @@ struct ecap_pwm_chip {
 	unsigned int	clk_rate;
 	void __iomem	*mmio_base;
 	struct ecap_context ctx;
+
+	/* two pin states - default, sleep */
+	struct pinctrl			*pinctrl;
+	struct pinctrl_state		*pins_default;
+	struct pinctrl_state		*pins_sleep;
 };
 
 static inline struct ecap_pwm_chip *to_ecap_pwm_chip(struct pwm_chip *chip)
@@ -208,16 +213,39 @@ static int ecap_pwm_probe(struct platform_device *pdev)
 	struct clk *clk;
 	struct ecap_pwm_chip *pc;
 	u16 status;
-	struct pinctrl *pinctrl;
-
-	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
-	if (IS_ERR(pinctrl))
-		dev_warn(&pdev->dev, "unable to select pin group\n");
 
 	pc = devm_kzalloc(&pdev->dev, sizeof(*pc), GFP_KERNEL);
 	if (!pc) {
 		dev_err(&pdev->dev, "failed to allocate memory\n");
 		return -ENOMEM;
+	}
+
+	pc->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (!IS_ERR(pc->pinctrl)) {
+		pc->pins_default = pinctrl_lookup_state(pc->pinctrl,
+							 PINCTRL_STATE_DEFAULT);
+		if (IS_ERR(pc->pins_default))
+			dev_dbg(&pdev->dev, "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(pc->pinctrl, pc->pins_default))
+				dev_err(&pdev->dev,
+					"could not set default pinstate\n");
+
+		pc->pins_sleep = pinctrl_lookup_state(pc->pinctrl,
+						       PINCTRL_STATE_SLEEP);
+		if (IS_ERR(pc->pins_sleep))
+			dev_dbg(&pdev->dev, "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		pc->pins_default = ERR_PTR(-ENODATA);
+		pc->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_dbg(&pdev->dev, "did not get pins for i2c error: %li\n",
+			 PTR_ERR(pc->pinctrl));
 	}
 
 	clk = devm_clk_get(&pdev->dev, "fck");
@@ -323,6 +351,11 @@ static int ecap_pwm_suspend(struct device *dev)
 	if (test_bit(PWMF_ENABLED, &pwm->flags))
 		pm_runtime_put_sync(dev);
 
+	/* Optionally let pins go into sleep states */
+	if (!IS_ERR(pc->pins_sleep))
+		if (pinctrl_select_state(pc->pinctrl, pc->pins_sleep))
+			dev_err(dev, "could not set pins to sleep state\n");
+
 	return 0;
 }
 
@@ -330,6 +363,11 @@ static int ecap_pwm_resume(struct device *dev)
 {
 	struct ecap_pwm_chip *pc = dev_get_drvdata(dev);
 	struct pwm_device *pwm = pc->chip.pwms;
+
+	/* Optionaly enable pins to be muxed in and configured */
+	if (!IS_ERR(pc->pins_default))
+		if (pinctrl_select_state(pc->pinctrl, pc->pins_default))
+			dev_err(dev, "could not set default pins\n");
 
 	/* Enable explicitly if PWM was running */
 	if (test_bit(PWMF_ENABLED, &pwm->flags))
