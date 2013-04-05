@@ -59,6 +59,13 @@
 				0x14c 0x10	/* mdio_clk.mdio_clk, MODE0 | OUTPUT_PULLUP */
 			>;
 		};
+
+		i2c0_pins: pinmux_i2c0_pins {
+			pinctrl-single,pins = <
+				0x188 0x30	/* i2c0_sda.i2c0_sda PULLUP | INPUTENABLE | MODE0 */
+				0x18c 0x30	/* i2c0_scl.i2c0_scl PULLUP | INPUTENABLE | MODE0 */
+			>;
+		};
 	};
 
 	ocp {
@@ -69,6 +76,8 @@
 		i2c0: i2c@44e0b000 {
 			status = "okay";
 			clock-frequency = <400000>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c0_pins>;
 
 			tps: tps@24 {
 				reg = <0x24>;
