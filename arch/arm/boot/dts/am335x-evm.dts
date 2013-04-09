@@ -25,8 +25,13 @@
 	};
 
 	am33xx_pinmux: pinmux@44e10800 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <>;
+		pinctrl-1 = <&nand_sleep_pins &lcd_sleep_pins
+				&mmc2_wl12xx_sleep_pins &mcasp1_sleep_pins
+				&mmc0_sleep_pins &ecap0_sleep_pins
+				&uart1_wl12xx_sleep_pins &wl12xx_sleep_pins
+				&general_sleep_pins>;
 
 		matrix_keypad_s0: matrix_keypad_s0 {
 			pinctrl-single,pins = <
@@ -35,6 +40,13 @@
 				0x64 0x27	/* gpmc_a9.gpio1_25, INPUT | MODE7 */
 				0x68 0x27	/* gpmc_a10.gpio1_26, INPUT | MODE7 */
 				0x6c 0x27	/* gpmc_a11.gpio1_27, INPUT | MODE7 */
+			>;
+		};
+
+		matrix_keypad_sleep_s1: matrix_keypad_sleep_s1 {
+			pinctrl-single,pins = <
+				0x54 0x27
+				0x58 0x27
 			>;
 		};
 
@@ -67,6 +79,28 @@
 			>;
 		};
 
+		cpsw_sleep_s1: cpsw_sleep_s1 {
+			pinctrl-single,pins = <
+				/* Slave 1 */
+				0x114 0x27
+				0x118 0x27
+				0x11c 0x27
+				0x120 0x27
+				0x124 0x27
+				0x128 0x27
+				0x12c 0x27
+				0x130 0x27
+				0x134 0x27
+				0x138 0x27
+				0x13c 0x27
+				0x140 0x27
+
+				/* MDIO */
+				0x148 0x27
+				0x14c 0x0f
+			>;
+		};
+
 		i2c0_pins: pinmux_i2c0_pins {
 			pinctrl-single,pins = <
 				0x188 0x30	/* i2c0_sda.i2c0_sda PULLUP | INPUTENABLE | MODE0 */
@@ -81,12 +115,158 @@
 			>;
 		};
 
+		i2c1_sleep_pins: pinmux_i2c1_sleep_pins {
+			pinctrl-single,pins = <
+				0x158 0x27	/* spi0_d1.i2c1_sda PULLUP | INPUTENABLE | MODE2 */
+				0x15c 0x27	/* spi0_cs0.i2c1_scl PULLUP | INPUTENABLE | MODE2 */
+			>;
+		};
+
 		uart0_pins: pinmux_uart0_pins {
 			pinctrl-single,pins = <
 				0x170 0x30	/* uart0_rxd.uart0_rxd PULLUP | INPUTENABLE | MODE0 */
 				0x174 0x00	/* uart0_txd.uart0_txd PULLDOWN | MODE0 */
 			>;
 		};
+
+		nand_sleep_pins: nand_sleep_pins {
+			pinctrl-single,pins = <
+				0x00 0x27
+				0x04 0x27
+				0x08 0x27
+				0x0C 0x27
+				0x10 0x27
+				0x14 0x27
+				0x18 0x27
+				0x1C 0x27
+				0x70 0x27
+				0x74 0x27
+				0x7C 0x27
+				0x90 0x27
+				0x94 0x27
+				0x98 0x27
+				0x9C 0x27
+			>;
+		};
+
+		lcd_sleep_pins: lcd_sleep_pins {
+			pinctrl-single,pins = <
+				0x20 0x27
+				0x24 0x27
+				0x28 0x27
+				0x2C 0x27
+				0x30 0x27
+				0x34 0x27
+				0x38 0x27
+				0x3C 0x27
+				0xA0 0x0f
+				0xA4 0x27
+				0xA8 0x27
+				0xAC 0x27
+				0xB0 0x27
+				0xB4 0x27
+				0xB8 0x27
+				0xBC 0x27
+				0xC0 0x27
+				0xC4 0x27
+				0xC8 0x27
+				0xCC 0x27
+				0xD0 0x27
+				0xD4 0x27
+				0xD8 0x0f
+				0xDC 0x27
+				0xE0 0x27
+				0xE4 0x27
+				0xE8 0x27
+				0xEC 0x27
+			>;
+		};
+
+		mcasp1_sleep_pins: mcasp1_sleep_pins {
+			pinctrl-single,pins = <
+				0x108 0x27
+				0x10C 0x27
+				0x110 0x27
+				0x144 0x0f
+			>;
+		};
+
+		mmc0_sleep_pins: mmc0_sleep_pins {
+			pinctrl-single,pins = <
+				0x0F0 0x27
+				0x0F4 0x27
+				0x0F8 0x27
+				0x0FC 0x27
+				0x100 0x27
+				0x104 0x27
+				0x1A0 0x27
+				0x160 0x27
+			>;
+		};
+
+
+		ecap0_sleep_pins: ecap0_sleep_pins {
+			pinctrl-single,pins = <
+				0x164 0x27
+			>;
+		};
+
+
+		mmc2_wl12xx_sleep_pins: mmc2_wl12xx_sleep_pins {
+			pinctrl-single,pins = <
+				0x44 0x27
+				0x48 0x27
+				0x4C 0x27
+				0x78 0x27
+				0x88 0x27
+				0x8C 0x27
+			>;
+		};
+
+		uart1_wl12xx_sleep_pins: uart1_wl12xx_sleep_pins {
+			pinctrl-single,pins = <
+				0x178 0x27
+				0x17C 0x27
+				0x180 0x27
+				0x184 0x27
+			>;
+		};
+
+
+		wl12xx_sleep_pins: wl12xx_sleep_pins {
+			pinctrl-single,pins = <
+				0x040 0x27
+				0x19C 0x27
+				0x1AC 0x27
+			>;
+		};
+
+
+		usb0_sleep_pins: usb0_sleep_pins {
+			pinctrl-single,pins = <
+				0x21C 0x27
+			>;
+		};
+
+
+		usb1_sleep_pins:usb1_sleep_pins {
+			pinctrl-single,pins = <
+				0x234 0x27
+			>;
+		};
+
+
+		general_sleep_pins: general_sleep_pins {
+			pinctrl-single,pins = <
+				0x050 0x27	/* gpmc_a4 */
+				0x1A8 0x27	/* mcasp0_axr1 */
+				0x1B0 0x27	/* xdma_event_intr0 */
+				0x1B4 0x27	/* xdma_event_intr1 */
+				0x1E4 0x27	/* emu0 */
+				0x1E8 0x27	/* emu1 */
+			>;
+		};
+
 	};
 
 	ocp {
@@ -111,8 +291,9 @@
 		i2c1: i2c@4802a000 {
 			status = "okay";
 			clock-frequency = <100000>;
-			pinctrl-names = "default";
+			pinctrl-names = "default", "sleep";
 			pinctrl-0 = <&i2c1_pins>;
+			pinctrl-1 = <&i2c1_sleep_pins>;
 
 			lis331dlh: lis331dlh@18 {
 				compatible = "st,lis331dlh", "st,lis3lv02d";
@@ -172,8 +353,9 @@
 		compatible = "gpio-matrix-keypad";
 		debounce-delay-ms = <5>;
 		col-scan-delay-us = <2>;
-		pinctrl-names = "default";
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&matrix_keypad_s0>;
+		pinctrl-1 = <&matrix_keypad_sleep_s1>;
 
 		row-gpios = <&gpio2 25 0	/* Bank1, pin25 */
 			     &gpio2 26 0	/* Bank1, pin26 */
@@ -213,6 +395,12 @@
 			gpio-key,wakeup;
 		};
 	};
+
+	usb@47400000 {
+		pinctrl-names = "sleep";
+		pinctrl-1 = <&usb0_sleep_pins &usb1_sleep_pins>;
+	};
+
 };
 
 /include/ "tps65910.dtsi"
@@ -292,9 +480,11 @@
 	};
 };
 
+
 &mac {
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&cpsw_s0>;
+	pinctrl-1 = <&cpsw_sleep_s1>;
 };
 
 &cpsw_emac0 {
