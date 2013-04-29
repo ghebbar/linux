@@ -38,6 +38,7 @@
 #include <linux/davinci_emac.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/pinctrl/consumer.h>
 
 /*
  * This timeout definition is a worst-case ultra defensive measure against
@@ -94,6 +95,11 @@ struct davinci_mdio_data {
 	struct mii_bus	*bus;
 	bool		suspended;
 	unsigned long	access_time; /* jiffies */
+
+	/* Two optional pin states - default & sleep */
+	struct pinctrl		*pinctrl;
+	struct pinctrl_state	*pins_default;
+	struct pinctrl_state	*pins_sleep;
 };
 
 static void __davinci_mdio_reset(struct davinci_mdio_data *data)
@@ -349,6 +355,36 @@ static int davinci_mdio_probe(struct platform_device *pdev)
 	data->bus->parent	= dev;
 	data->bus->priv		= data;
 
+	data->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (!IS_ERR(data->pinctrl)) {
+		data->pins_default = pinctrl_lookup_state(data->pinctrl,
+						PINCTRL_STATE_DEFAULT);
+		/* enable pins to be muxed in and configured */
+		if (IS_ERR(data->pins_default))
+			dev_warn(&pdev->dev, "could not get default pinstate\n");
+		else
+			if (pinctrl_select_state(data->pinctrl,
+						 data->pins_default))
+				dev_err(&pdev->dev,
+					"could not set default pins\n");
+
+		data->pins_sleep = pinctrl_lookup_state(data->pinctrl,
+						PINCTRL_STATE_SLEEP);
+		if (IS_ERR(data->pins_sleep))
+			dev_warn(&pdev->dev, "could not get sleep pinstate\n");
+	} else {
+		/*
+		* Since we continue even when pinctrl node is not found,
+		* Invalidate pins as not available. This is to make sure that
+		* IS_ERR(pins_xxx) results in failure when used.
+		*/
+		data->pins_default = ERR_PTR(-ENODATA);
+		data->pins_sleep = ERR_PTR(-ENODATA);
+
+		dev_warn(&pdev->dev,
+			 "pins are not configured from the driver\n");
+	}
+
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_get_sync(&pdev->dev);
 	data->clk = clk_get(&pdev->dev, "fck");
@@ -456,6 +492,11 @@ static int davinci_mdio_suspend(struct device *dev)
 	data->suspended = true;
 	spin_unlock(&data->lock);
 
+	/* Optionally let pins go into sleep states */
+	if (!IS_ERR(data->pins_sleep))
+		if (pinctrl_select_state(data->pinctrl, data->pins_sleep))
+			dev_err(dev, "could not set pins to sleep state\n");
+
 	return 0;
 }
 
@@ -466,6 +507,11 @@ static int davinci_mdio_resume(struct device *dev)
 
 	spin_lock(&data->lock);
 	pm_runtime_get_sync(data->dev);
+
+	/* Optionaly enable pins to be muxed in and configured */
+	if (!IS_ERR(data->pins_default))
+		if (pinctrl_select_state(data->pinctrl, data->pins_default))
+			dev_err(dev, "could not set default pins\n");
 
 	/* restart the scan state machine */
 	ctrl = __raw_readl(&data->regs->control);
