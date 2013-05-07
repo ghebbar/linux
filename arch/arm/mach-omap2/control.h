@@ -454,11 +454,26 @@ struct am33xx_ipc_data {
 	u32 resume_addr;
 	u32 param1;
 	u32 param2;
+	u32 param3;
 	u32 sleep_mode;
 };
+
+/*
+ * 9-4 = VTT GPIO PIN (6 Bits)
+ *   3 = VTT Status (1 Bit)
+ * 2-0 = Memory Type (2 Bits)
+*/
+#define MEM_TYPE_SHIFT		(0x0)
+#define MEM_TYPE_MASK		(0x7 << 0)
+#define VTT_STAT_SHIFT		(0x3)
+#define VTT_STAT_MASK		(0x1 << 3)
+#define VTT_GPIO_PIN_SHIFT	(0x4)
+#define VTT_GPIO_PIN_MASK	(0x2f << 4)
+
 extern void am33xx_wkup_m3_ipc_cmd(struct am33xx_ipc_data *data);
 extern void am33xx_txev_eoi(void);
 extern void am33xx_txev_enable(void);
+extern void am33xx_wkup_m3_version_clear(void);
 
 #else
 #define omap_ctrl_base_get()		0

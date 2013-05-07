@@ -616,11 +616,22 @@ void am33xx_txev_enable(void)
 	omap_ctrl_writel(AM33XX_M3_TXEV_ENABLE, AM33XX_CONTROL_M3_TXEV_EOI);
 }
 
+/*
+ * Invalidate M3 firmware version before hardreset.
+ * Write invalid version in lower 4 nibbles of parameter
+ * register (ipc_regs + 0x8).
+ */
+void am33xx_wkup_m3_version_clear(void)
+{
+	omap_ctrl_writel(0xffff0000, AM33XX_CONTROL_IPC_MSG_REG2);
+}
+
 void am33xx_wkup_m3_ipc_cmd(struct am33xx_ipc_data *data)
 {
 	omap_ctrl_writel(data->resume_addr, AM33XX_CONTROL_IPC_MSG_REG0);
 	omap_ctrl_writel(data->sleep_mode, AM33XX_CONTROL_IPC_MSG_REG1);
 	omap_ctrl_writel(data->param1, AM33XX_CONTROL_IPC_MSG_REG2);
 	omap_ctrl_writel(data->param2, AM33XX_CONTROL_IPC_MSG_REG3);
+	omap_ctrl_writel(data->param3, AM33XX_CONTROL_IPC_MSG_REG4);
 }
 #endif /* CONFIG_SOC_AM33XX && CONFIG_PM */
