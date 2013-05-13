@@ -2171,6 +2171,96 @@ static int am33xx_evm_tx_clk_dly_phy_fixup(struct phy_device *phydev)
 	return 0;
 }
 
+#define AM33XX_VDD_MPU_OPP50_UV		1100000
+#define AM33XX_OPP120_FREQ		600000000
+#define AM33XX_OPPTURBO_FREQ		720000000
+
+#define AM33XX_ES2_0_VDD_MPU_OPP50_UV	950000
+#define AM33XX_ES2_0_OPPTURBO_FREQ	800000000
+#define AM33XX_ES2_0_OPPNITRO_FREQ	1000000000
+
+#define AM33XX_ES2_1_VDD_MPU_OPP50_UV	950000
+#define AM33XX_ES2_1_OPPTURBO_FREQ	800000000
+#define AM33XX_ES2_1_OPPNITRO_FREQ	1000000000
+
+static void am335x_opp_init(void)
+{
+	u32 rev;
+	int voltage_uv = 0;
+	struct device *core_dev, *mpu_dev;
+	struct regulator *core_reg;
+
+	core_dev = omap_device_get_by_hwmod_name("l3_main");
+	mpu_dev = omap_device_get_by_hwmod_name("mpu");
+
+	if (!mpu_dev || !core_dev) {
+		pr_err("%s: Aiee.. no mpu/core devices? %p %p\n", __func__,
+		       mpu_dev, core_dev);
+		return;
+	}
+
+	core_reg = regulator_get(core_dev, "vdd_core");
+	if (IS_ERR(core_reg)) {
+		pr_err("%s: unable to get core regulator\n", __func__);
+		return;
+	}
+
+	/*
+	 * Ensure physical regulator is present.
+	 * (e.g. could be dummy regulator.)
+	 */
+	voltage_uv = regulator_get_voltage(core_reg);
+	if (voltage_uv < 0) {
+		pr_err("%s: physical regulator not present for core" \
+		       "(%d)\n", __func__, voltage_uv);
+		regulator_put(core_reg);
+		return;
+	}
+
+	pr_debug("%s: core regulator value %d\n", __func__, voltage_uv);
+	if (voltage_uv > 0) {
+		rev = omap_rev();
+		switch (rev) {
+		case AM335X_REV_ES1_0:
+			if (voltage_uv <= AM33XX_VDD_MPU_OPP50_UV) {
+				/*
+				 * disable the higher freqs - we dont care about
+				 * the results
+				 */
+				opp_disable(mpu_dev, AM33XX_OPP120_FREQ);
+				opp_disable(mpu_dev, AM33XX_OPPTURBO_FREQ);
+			}
+			break;
+		case AM335X_REV_ES2_0:
+			if (voltage_uv <= AM33XX_ES2_0_VDD_MPU_OPP50_UV) {
+				/*
+				 * disable the higher freqs - we dont care about
+				 * the results
+				 */
+				opp_disable(mpu_dev,
+					    AM33XX_ES2_0_OPPTURBO_FREQ);
+				opp_disable(mpu_dev,
+					    AM33XX_ES2_0_OPPNITRO_FREQ);
+			}
+			break;
+		case AM335X_REV_ES2_1:
+		/* FALLTHROUGH */
+		default:
+			if (voltage_uv <= AM33XX_ES2_1_VDD_MPU_OPP50_UV) {
+				/*
+				 * disable the higher freqs - we dont care about
+				 * the results
+				 */
+				opp_disable(mpu_dev,
+					    AM33XX_ES2_1_OPPTURBO_FREQ);
+				opp_disable(mpu_dev,
+					    AM33XX_ES2_1_OPPNITRO_FREQ);
+			}
+			break;
+		}
+	}
+}
+
 static void setup_general_purpose_evm(void)
 {
 	u32 prof_sel = am335x_get_profile_selection();
@@ -2189,6 +2279,8 @@ static void setup_general_purpose_evm(void)
 	/* Atheros Tx Clk delay Phy fixup */
 	phy_register_fixup_for_uid(AM335X_EVM_PHY_ID, AM335X_EVM_PHY_MASK,
 				   am33xx_evm_tx_clk_dly_phy_fixup);
+
+	am335x_opp_init();
 }
 
 static void setup_ind_auto_motor_ctrl_evm(void)
@@ -2209,6 +2301,8 @@ static void setup_ind_auto_motor_ctrl_evm(void)
 		PROFILE_0);
 
 	am33xx_cpsw_init(AM33XX_CPSW_MODE_MII, "0:1e", "0:00");
+
+	am335x_opp_init();
 }
 
 /* BeagleBone < Rev A3 */
@@ -2226,6 +2320,8 @@ static void setup_beaglebone_old(void)
 					beaglebone_phy_fixup);
 
 	am33xx_cpsw_init(AM33XX_CPSW_MODE_RMII, NULL, NULL);
+
+	am335x_opp_init();
 }
 
 /* BeagleBone after Rev A3 */
@@ -2242,6 +2338,8 @@ static void setup_beaglebone(void)
 	regulator_has_full_constraints();
 
 	am33xx_cpsw_init(AM33XX_CPSW_MODE_MII, NULL, NULL);
+
+	am335x_opp_init();
 }
 
 /* EVM - Starter Kit */
@@ -2258,6 +2356,8 @@ static void setup_starterkit(void)
 	/* Atheros Tx Clk delay Phy fixup */
 	phy_register_fixup_for_uid(AM335X_EVM_PHY_ID, AM335X_EVM_PHY_MASK,
 				   am33xx_evm_tx_clk_dly_phy_fixup);
+
+	am335x_opp_init();
 }
 
 static void am335x_setup_daughter_board(struct memory_accessor *m, void *c)
