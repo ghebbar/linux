@@ -50,6 +50,33 @@
 				0x174 0x00	/* uart0_txd.uart0_txd PULLDOWN | MODE0 */
 			>;
 		};
+
+		cpsw_default: cpsw_default {
+			pinctrl-single,pins = <
+				/* Slave 1 */
+				0x110 0x20	/* mii1_rxerr.mii1_rxerr, MODE0 | INPUT */
+				0x114 0x0	/* mii1_txen.mii1_txen, MODE0 | OUTPUT */
+				0x118 0x20	/* mii1_rxdv.mii1_rxdv, MODE0 | INPUT_PULLDOWN */
+				0x11c 0x0	/* mii1_txd3.mii1_txd3, MODE0 | OUTPUT */
+				0x120 0x0	/* mii1_txd2.mii1_txd2, MODE0 | OUTPUT */
+				0x124 0x0	/* mii1_txd1.mii1_txd1, MODE0 | OUTPUT */
+				0x128 0x0	/* mii1_txd0.mii1_txd0, MODE0 | OUTPUT */
+				0x12c 0x20	/* mii1_txclk.mii1_txclk, MODE0 | INPUT_PULLDOWN */
+				0x130 0x20	/* mii1_rxclk.mii1_rxclk, MODE0 | INPUT_PULLDOWN */
+				0x134 0x20	/* mii1_rxd3.mii1_rxd3, MODE0 | INPUT_PULLDOWN */
+				0x138 0x20	/* mii1_rxd2.mii1_rxd2, MODE0 | INPUT_PULLDOWN */
+				0x13c 0x20	/* mii1_rxd1.mii1_rxd1, MODE0 | INPUT_PULLDOWN */
+				0x140 0x20	/* mii1_rxd0.mii1_rxd0, MODE0 | INPUT_PULLDOWN */
+			>;
+		};
+
+		davinci_mdio_default: davinci_mdio_default {
+			pinctrl-single,pins = <
+				/* MDIO */
+				0x148 0x30	/* mdio_data.mdio_data, MODE0 | INPUT_PULLUP */
+				0x14c 0x10	/* mdio_clk.mdio_clk, MODE0 | OUTPUT_PULLUP */
+			>;
+		};
 	};
 
 	ocp {
@@ -164,4 +191,15 @@
 
 &cpsw_emac1 {
 	phy_id = <&davinci_mdio>, <1>;
+};
+
+&mac {
+	pinctrl-names = "default";
+	pinctrl-0 = <&cpsw_default>;
+
+};
+
+&davinci_mdio {
+	pinctrl-names = "default";
+	pinctrl-0 = <&davinci_mdio_default>;
 };
