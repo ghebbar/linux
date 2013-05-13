@@ -32,7 +32,7 @@
 
 	am33xx_pinmux: pinmux@44e10800 {
 		pinctrl-names = "default";
-		pinctrl-0 = <&gpio_keys_s0 &ddr3_vtt_toggle>;
+		pinctrl-0 = <&ddr3_vtt_toggle>;
 
 		user_leds_s0: user_leds_s0 {
 			pinctrl-single,pins = <
@@ -219,6 +219,8 @@
 		compatible = "gpio-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_keys_s0>;
 
 		switch@1 {
 			label = "button0";
