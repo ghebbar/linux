@@ -131,6 +131,18 @@
 				0x14c 0x0f
 			>;
 		};
+
+		usb0_sleep_pins: usb0_sleep_pins {
+			pinctrl-single,pins = <
+				0x21C 0x27
+			>;
+		};
+
+		usb1_sleep_pins:usb1_sleep_pins {
+			pinctrl-single,pins = <
+				0x234 0x27
+			>;
+		};
 	};
 
 	ocp {
@@ -261,6 +273,12 @@
 			gpio-key,wakeup;
 		};
 	};
+
+	usb@47400000 {
+		pinctrl-names = "sleep";
+		pinctrl-1 = <&usb0_sleep_pins &usb1_sleep_pins>;
+	};
+
 };
 
 /include/ "tps65910.dtsi"
