@@ -28,7 +28,8 @@
 		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <>;
 		pinctrl-1 = <&nand_sleep_pins &lcd_sleep_pins
-				&mcasp1_sleep_pins &ecap0_sleep_pins>;
+				&mcasp1_sleep_pins &ecap0_sleep_pins
+				&mmc0_sleep_pins>;
 
 		matrix_keypad_s0: matrix_keypad_s0 {
 			pinctrl-single,pins = <
@@ -211,6 +212,19 @@
 		ecap0_sleep_pins: ecap0_sleep_pins {
 			pinctrl-single,pins = <
 				0x164 0x0f
+			>;
+		};
+
+		mmc0_sleep_pins: mmc0_sleep_pins {
+			pinctrl-single,pins = <
+				0x0F0 0x27
+				0x0F4 0x27
+				0x0F8 0x27
+				0x0FC 0x27
+				0x100 0x27
+				0x104 0x27
+				0x1A0 0x27
+				0x160 0x27
 			>;
 		};
 	};
