@@ -30,7 +30,8 @@
 		pinctrl-1 = <&nand_sleep_pins &lcd_sleep_pins
 				&mcasp1_sleep_pins &ecap0_sleep_pins
 				&mmc0_sleep_pins &mmc2_wl12xx_sleep_pins
-				&uart1_wl12xx_sleep_pins &wl12xx_sleep_pins>;
+				&uart1_wl12xx_sleep_pins &wl12xx_sleep_pins
+				&general_sleep_pins>;
 
 		matrix_keypad_s0: matrix_keypad_s0 {
 			pinctrl-single,pins = <
@@ -257,6 +258,18 @@
 				0x1AC 0x27
 			>;
 		};
+
+		general_sleep_pins: general_sleep_pins {
+			pinctrl-single,pins = <
+				0x050 0x27      /* gpmc_a4 */
+				0x1A8 0x27      /* mcasp0_axr1 */
+				0x1B0 0x27      /* xdma_event_intr0 */
+				0x1B4 0x27      /* xdma_event_intr1 */
+				0x1E4 0x27      /* emu0 */
+				0x1E8 0x27      /* emu1 */
+			>;
+		};
+
 	};
 
 	ocp {
