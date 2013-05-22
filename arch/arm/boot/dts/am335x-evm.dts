@@ -59,6 +59,13 @@
 			>;
 		};
 
+		i2c1_sleep_pins: pinmux_i2c1_sleep_pins {
+			pinctrl-single,pins = <
+				0x158 0x27      /* spi0_d1.i2c1_sda PULLUP | INPUTENABLE | MODE2 */
+				0x15c 0x27      /* spi0_cs0.i2c1_scl PULLUP | INPUTENABLE | MODE2 */
+			>;
+		};
+
 		uart0_pins: pinmux_uart0_pins {
 			pinctrl-single,pins = <
 				0x170 0x30	/* uart0_rxd.uart0_rxd PULLUP | INPUTENABLE | MODE0 */
@@ -140,8 +147,9 @@
 		};
 
 		i2c1: i2c@4802a000 {
-			pinctrl-names = "default";
+			pinctrl-names = "default", "sleep";
 			pinctrl-0 = <&i2c1_pins>;
+			pinctrl-1 = <&i2c1_sleep_pins>;
 
 			status = "okay";
 			clock-frequency = <100000>;
