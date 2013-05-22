@@ -84,11 +84,37 @@
 			>;
 		};
 
+		cpsw_sleep: cpsw_sleep {
+			pinctrl-single,pins = <
+				/* Slave 1 */
+				0x114 0x27
+				0x118 0x27
+				0x11c 0x27
+				0x120 0x27
+				0x124 0x27
+				0x128 0x27
+				0x12c 0x27
+				0x130 0x27
+				0x134 0x27
+				0x138 0x27
+				0x13c 0x27
+				0x140 0x27
+			>;
+		};
+
 		davinci_mdio_default: davinci_mdio_default {
 			pinctrl-single,pins = <
 				/* MDIO */
 				0x148 0x30	/* mdio_data.mdio_data, MODE0 | INPUT_PULLUP */
 				0x14c 0x10	/* mdio_clk.mdio_clk, MODE0 | OUTPUT_PULLUP */
+			>;
+		};
+
+		davinci_mdio_sleep: davinci_mdio_sleep {
+			pinctrl-single,pins = <
+				/* MDIO */
+				0x148 0x27
+				0x14c 0x0f
 			>;
 		};
 	};
@@ -299,13 +325,15 @@
 };
 
 &mac {
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&cpsw_default>;
+	pinctrl-1 = <&cpsw_sleep>;
 };
 
 &davinci_mdio {
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&davinci_mdio_default>;
+	pinctrl-1 = <&davinci_mdio_sleep>;
 };
 
 &cpsw_emac0 {
