@@ -29,7 +29,8 @@
 		pinctrl-0 = <>;
 		pinctrl-1 = <&nand_sleep_pins &lcd_sleep_pins
 				&mcasp1_sleep_pins &ecap0_sleep_pins
-				&mmc0_sleep_pins>;
+				&mmc0_sleep_pins &mmc2_wl12xx_sleep_pins
+				&uart1_wl12xx_sleep_pins &wl12xx_sleep_pins>;
 
 		matrix_keypad_s0: matrix_keypad_s0 {
 			pinctrl-single,pins = <
@@ -225,6 +226,35 @@
 				0x104 0x27
 				0x1A0 0x27
 				0x160 0x27
+			>;
+		};
+
+		mmc2_wl12xx_sleep_pins: mmc2_wl12xx_sleep_pins {
+			pinctrl-single,pins = <
+				0x44 0x27
+				0x48 0x27
+				0x4C 0x27
+				0x78 0x27
+				0x88 0x27
+				0x8C 0x27
+			>;
+		};
+
+		uart1_wl12xx_sleep_pins: uart1_wl12xx_sleep_pins {
+			pinctrl-single,pins = <
+				0x178 0x27
+				0x17C 0x27
+				0x180 0x27
+				0x184 0x27
+			>;
+		};
+
+
+		wl12xx_sleep_pins: wl12xx_sleep_pins {
+			pinctrl-single,pins = <
+				0x040 0x27
+				0x19C 0x27
+				0x1AC 0x27
 			>;
 		};
 	};
