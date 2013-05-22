@@ -25,8 +25,9 @@
 	};
 
 	am33xx_pinmux: pinmux@44e10800 {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <>;
+		pinctrl-1 = <&nand_sleep_pins>;
 
 		matrix_keypad_s0: matrix_keypad_s0 {
 			pinctrl-single,pins = <
@@ -141,6 +142,26 @@
 		usb1_sleep_pins:usb1_sleep_pins {
 			pinctrl-single,pins = <
 				0x234 0x27
+			>;
+		};
+
+		nand_sleep_pins: nand_sleep_pins {
+			pinctrl-single,pins = <
+				0x00 0x27
+				0x04 0x27
+				0x08 0x27
+				0x0C 0x27
+				0x10 0x27
+				0x14 0x27
+				0x18 0x27
+				0x1C 0x27
+				0x70 0x27
+				0x74 0x27
+				0x7C 0x27
+				0x90 0x27
+				0x94 0x27
+				0x98 0x27
+				0x9C 0x27
 			>;
 		};
 	};
