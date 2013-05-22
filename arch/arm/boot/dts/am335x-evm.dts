@@ -38,6 +38,13 @@
 			>;
 		};
 
+		matrix_keypad_sleep_s1: matrix_keypad_sleep_s1 {
+			pinctrl-single,pins = <
+				0x54 0x27
+				0x58 0x27
+			>;
+		};
+
 		volume_keys_s0: volume_keys_s0 {
 			pinctrl-single,pins = <
 				0x150 0x27	/* spi0_sclk.gpio0_2, INPUT | MODE7 */
@@ -212,8 +219,9 @@
 		compatible = "gpio-matrix-keypad";
 		debounce-delay-ms = <5>;
 		col-scan-delay-us = <2>;
-		pinctrl-names = "default";
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&matrix_keypad_s0>;
+		pinctrl-1 = <&matrix_keypad_sleep_s1>;
 
 		row-gpios = <&gpio1 25 0	/* Bank1, pin25 */
 			     &gpio1 26 0	/* Bank1, pin26 */
