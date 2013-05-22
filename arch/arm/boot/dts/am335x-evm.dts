@@ -27,7 +27,8 @@
 	am33xx_pinmux: pinmux@44e10800 {
 		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <>;
-		pinctrl-1 = <&nand_sleep_pins &lcd_sleep_pins>;
+		pinctrl-1 = <&nand_sleep_pins &lcd_sleep_pins
+				&mcasp1_sleep_pins>;
 
 		matrix_keypad_s0: matrix_keypad_s0 {
 			pinctrl-single,pins = <
@@ -195,6 +196,15 @@
 				0xE4 0x27
 				0xE8 0x27
 				0xEC 0x27
+			>;
+		};
+
+		mcasp1_sleep_pins: mcasp1_sleep_pins {
+			pinctrl-single,pins = <
+				0x108 0x27
+				0x10C 0x27
+				0x110 0x27
+				0x144 0x27
 			>;
 		};
 	};
