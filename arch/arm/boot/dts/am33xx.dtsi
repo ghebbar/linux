@@ -306,6 +306,14 @@
 			interrupts = <75
 				      76>;
 			ti,hwmods = "rtc";
+
+			/* AM335x PG 2.0 has the rtc alarm-event wakeup advisory
+			   fixed. For boards with chip revision > PG 2.0 SoC
+			   Chip, add below DT properties to enable support for
+			   wake-up from rtc alarm event.
+			   ti,wakeup_capable;
+			   ti,has_irq_wake_enb;
+			*/
 		};
 
 		spi0: spi@48030000 {
