@@ -80,6 +80,8 @@
 #define OMAP_RTC_ALARM2_YEARS_REG	0x94
 #define OMAP_RTC_PMIC_REG		0x98
 
+#define OMAP_RTC_IRQWAKEEN		0x7C
+
 /* OMAP_RTC_CTRL_REG bit fields: */
 #define OMAP_RTC_CTRL_SPLIT		(1<<7)
 #define OMAP_RTC_CTRL_DISABLE		(1<<6)
@@ -108,6 +110,9 @@
 /* OMAP_RTC_PMIC_REG bit fields: */
 #define OMAP_RTC_PMIC_POWER_EN_EN       (1<<16)
 
+/* OMAP_RTC_IRQWAKEEN bit fields: */
+#define OMAP_RTC_IRQWAKEEN_ALARM_WAKEEN    (1<<1)
+
 /* OMAP_RTC_KICKER values */
 #define	KICK0_VALUE			0x83e70b13
 #define	KICK1_VALUE			0x95a4f1e0
@@ -117,6 +122,7 @@
 #define SHUTDOWN_TIME_SEC		2
 
 static void __iomem	*rtc_base;
+static unsigned int	has_irq_wake_enb_bit;
 
 #define rtc_read(addr)		readb(rtc_base + (addr))
 #define rtc_write(val, addr)	writeb(val, rtc_base + (addr))
@@ -508,8 +514,13 @@ static int __init omap_rtc_probe(struct platform_device *pdev)
 
 	/* Fixup wakeup-enable feature based on the device tree */
 	if (of_id && of_find_property(pdev->dev.of_node,
-				      "ti,wakeup_capable", NULL))
+				      "ti,wakeup_capable", NULL)) {
 		device_init_wakeup(&pdev->dev, 1);
+
+		if (of_find_property(pdev->dev.of_node,
+				     "ti,has_irq_wake_enb", NULL))
+			has_irq_wake_enb_bit = true;
+	}
 
 	if (new_ctrl & (u8) OMAP_RTC_CTRL_SPLIT)
 		pr_info("%s: split power mode\n", pdev->name);
@@ -557,16 +568,25 @@ static u8 irqstat;
 
 static int omap_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	u8 irqwake_stat;
+
 	irqstat = rtc_read(OMAP_RTC_INTERRUPTS_REG);
 
-	/* FIXME the RTC alarm is not currently acting as a wakeup event
-	 * source, and in fact this enable() call is just saving a flag
-	 * that's never used...
+	/* FIXME. On some platforms the RTC alarm is not currently acting as a
+	 * wakeup event source, and in fact this enable() call is just saving a
+	 * flag that's never used...
 	 */
-	if (device_may_wakeup(&pdev->dev))
+	if (device_may_wakeup(&pdev->dev)) {
 		enable_irq_wake(omap_rtc_alarm);
-	else
+
+		if (has_irq_wake_enb_bit == true) {
+			irqwake_stat = rtc_read(OMAP_RTC_IRQWAKEEN);
+			irqwake_stat |= OMAP_RTC_IRQWAKEEN_ALARM_WAKEEN;
+			rtc_write(irqwake_stat, OMAP_RTC_IRQWAKEEN);
+		}
+	} else {
 		rtc_write(0, OMAP_RTC_INTERRUPTS_REG);
+	}
 
 	/* Disable the clock/module */
 	pm_runtime_put_sync(&pdev->dev);
@@ -576,13 +596,23 @@ static int omap_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int omap_rtc_resume(struct platform_device *pdev)
 {
+	u8 irqwake_stat;
+
 	/* Enable the clock/module so that we can access the registers */
 	pm_runtime_get_sync(&pdev->dev);
 
-	if (device_may_wakeup(&pdev->dev))
+	if (device_may_wakeup(&pdev->dev)) {
 		disable_irq_wake(omap_rtc_alarm);
-	else
+
+		if (has_irq_wake_enb_bit == true) {
+			irqwake_stat = rtc_read(OMAP_RTC_IRQWAKEEN);
+			irqwake_stat &= ~OMAP_RTC_IRQWAKEEN_ALARM_WAKEEN;
+			rtc_write(irqwake_stat, OMAP_RTC_IRQWAKEEN);
+		}
+	} else {
 		rtc_write(irqstat, OMAP_RTC_INTERRUPTS_REG);
+	}
+
 	return 0;
 }
 

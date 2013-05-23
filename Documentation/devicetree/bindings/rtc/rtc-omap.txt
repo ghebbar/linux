@@ -13,6 +13,8 @@ Optional properties:
 Optional properties:
 - ti,wakeup_capable: Inform the rtc driver that this module is wake-up
   capable so that rtcwake and suspend tests can work.
+- ti,has_irq_wake_enb: Inform rtc driver that this module has a a
+  special register to enable Wakeup feature for Alarm events.
 
 Example:
 
