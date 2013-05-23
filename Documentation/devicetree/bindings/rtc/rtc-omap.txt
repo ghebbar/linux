@@ -10,6 +10,10 @@ Optional properties:
 - ti,system-power-controller: Telling whether or not rtc is controlling
   the system power.
 
+Optional properties:
+- ti,wakeup_capable: Inform the rtc driver that this module is wake-up
+  capable so that rtcwake and suspend tests can work.
+
 Example:
 
 rtc@1c23000 {
