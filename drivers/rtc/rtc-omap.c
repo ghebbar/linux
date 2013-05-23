@@ -506,6 +506,11 @@ static int __init omap_rtc_probe(struct platform_device *pdev)
 	 *    is write-only, and always reads as zero...)
 	 */
 
+	/* Fixup wakeup-enable feature based on the device tree */
+	if (of_id && of_find_property(pdev->dev.of_node,
+				      "ti,wakeup_capable", NULL))
+		device_init_wakeup(&pdev->dev, 1);
+
 	if (new_ctrl & (u8) OMAP_RTC_CTRL_SPLIT)
 		pr_info("%s: split power mode\n", pdev->name);
 
