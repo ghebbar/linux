@@ -34,6 +34,7 @@
 #include <asm/sizes.h>
 #include <asm/fncpy.h>
 #include <asm/system_misc.h>
+#include <asm/smp_scu.h>
 
 #include "pm.h"
 #include "cm33xx.h"
@@ -44,7 +45,7 @@
 #include "soc.h"
 #include "sram.h"
 
-static void __iomem *am33xx_emif_base;
+static void __iomem *am33xx_emif_base, *scu_base;
 static struct powerdomain *cefuse_pwrdm, *gfx_pwrdm, *per_pwrdm, *mpu_pwrdm;
 static struct clockdomain *gfx_l4ls_clkdm;
 static struct clockdomain *l3s_clkdm, *l4fw_clkdm, *clk_24mhz_clkdm;
@@ -61,7 +62,9 @@ static struct am33xx_suspend_params susp_params;
 
 static int am33xx_do_sram_idle(long unsigned int unused)
 {
+
 	am33xx_do_wfi_sram(&susp_params);
+
 	return 0;
 }
 
@@ -77,23 +80,33 @@ static int am33xx_pm_suspend(unsigned int state)
 		clkdm_wakeup(clk_24mhz_clkdm);
 	}
 
-	/* Try to put GFX to sleep */
-	omap_set_pwrdm_state(gfx_pwrdm, PWRDM_POWER_OFF);
+	if (soc_is_am33xx()) {
+		omap_set_pwrdm_state(gfx_pwrdm, PWRDM_POWER_OFF);
+	} else if (soc_is_am43xx()) {
+		scu_power_mode(scu_base, SCU_PM_POWEROFF);
+	}
 
 	ret = cpu_suspend(0, am33xx_do_sram_idle);
 
-	status = pwrdm_read_pwrst(gfx_pwrdm);
-	if (status != PWRDM_POWER_OFF)
-		pr_err("PM: GFX domain did not transition\n");
+	/* Set CPU Powerstate back to NORMAL in SCU */
+	if (soc_is_am43xx())
+		scu_power_mode(scu_base, SCU_PM_NORMAL);
 
-	/*
-	 * BUG: GFX_L4LS clock domain needs to be woken up to
-	 * ensure thet L4LS clock domain does not get stuck in transition
-	 * If that happens L3 module does not get disabled, thereby leading
-	 * to PER power domain transition failing
-	 */
-	clkdm_wakeup(gfx_l4ls_clkdm);
-	clkdm_sleep(gfx_l4ls_clkdm);
+	if (soc_is_am33xx()) {
+		status = pwrdm_read_pwrst(gfx_pwrdm);
+		if (status != PWRDM_POWER_OFF)
+			pr_err("GFX domain did not transition\n");
+		else
+			pr_info("GFX domain entered low power state\n");
+		/*
+		 * BUG: GFX_L4LS clock domain needs to be woken up to
+		 * ensure thet L4LS clock domain does not get stuck in transition
+		 * If that happens L3 module does not get disabled, thereby leading
+		 * to PER power domain transition failing
+		 */
+		clkdm_wakeup(gfx_l4ls_clkdm);
+		clkdm_sleep(gfx_l4ls_clkdm);
+	}
 
 	if (ret) {
 		pr_err("PM: Kernel suspend failure\n");
@@ -201,6 +214,7 @@ static int am33xx_pm_begin(suspend_state_t state)
 		pr_warn("PM: Unable to ping CM3\n");
 		return -1;
 	}
+
 
 	return 0;
 }
@@ -311,12 +325,22 @@ static int __init am33xx_map_emif(void)
 	return 0;
 }
 
+static int __init am43xx_map_scu(void)
+{
+	scu_base = ioremap(scu_a9_get_base(), SZ_256);
+
+	if (!scu_base)
+		return -ENOMEM;
+
+	return 0;
+}
+
 int __init am33xx_pm_init(void)
 {
 	int ret;
 	u32 temp;
 
-	if (!soc_is_am33xx())
+	if (!soc_is_am33xx() && !soc_is_am43xx())
 		return -ENODEV;
 
 	gfx_pwrdm = pwrdm_lookup("gfx_pwrdm");
@@ -328,15 +352,29 @@ int __init am33xx_pm_init(void)
 	l4fw_clkdm = clkdm_lookup("l4fw_clkdm");
 	clk_24mhz_clkdm = clkdm_lookup("clk_24mhz_clkdm");
 
-	if ((!gfx_pwrdm) || (!per_pwrdm) || (!mpu_pwrdm) || (!gfx_l4ls_clkdm) ||
-	    (!l3s_clkdm) || (!l4fw_clkdm) || (!clk_24mhz_clkdm)) {
-		ret = -ENODEV;
-		goto err;
+	if (soc_is_am33xx()) {
+		if ((!gfx_pwrdm) || (!per_pwrdm) || (!mpu_pwrdm) || (!gfx_l4ls_clkdm) ||
+		    (!l3s_clkdm) || (!l4fw_clkdm) || (!clk_24mhz_clkdm)) {
+			ret = -ENODEV;
+			goto err;
+		}
+		susp_params.cpu_id = 0x1;
+	}
+
+	if (soc_is_am43xx()) {
+		ret = am43xx_map_scu();
+		if (ret) {
+			pr_err("PM: Could not ioremap SCU\n");
+			goto err;
+		}
+
+		susp_params.l2_base_virt = omap4_get_l2cache_base();
+		susp_params.cpu_id = 0x2;
 	}
 
 	am33xx_pm = kzalloc(sizeof(*am33xx_pm), GFP_KERNEL);
 	if (!am33xx_pm) {
-		pr_err("Memory allocation failed\n");
+		pr_err("PM: Memory allocation failed\n");
 		ret = -ENOMEM;
 		return ret;
 	}

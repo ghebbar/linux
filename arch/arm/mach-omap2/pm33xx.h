@@ -39,8 +39,9 @@ struct am33xx_suspend_params {
 	void __iomem *emif_addr_virt;
 	u32 mem_type;
 	void __iomem *dram_sync;
+	void __iomem *l2_base_virt;
+	u32 cpu_id;
 };
-
 
 #endif
 
@@ -72,7 +73,6 @@ struct am33xx_suspend_params {
 #define AM43XX_CM_MPU_CLKSTCTRL AM43XX_CM_REGADDR(0x8300, 0x00)
 #define AM43XX_CM_MPU_MPU_CLKCTRL AM43XX_CM_REGADDR(0x8300, 0x20)
 #define AM43XX_CM_PER_EMIF_CLKCTRL  AM43XX_CM_REGADDR(0x8800, 0x0720)
-
 
 #define MEM_TYPE_DDR2		2
 
