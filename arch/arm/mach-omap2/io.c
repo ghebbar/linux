@@ -624,6 +624,13 @@ void __init am43xx_init_early(void)
 	omap_hwmod_init_postsetup();
 	omap_clk_init = am43xx_clk_init;
 }
+
+void __init am43xx_init_late(void)
+{
+	omap_hwmod_force_mstandby_repeated();
+	am33xx_pm_init();
+}
+
 #endif
 
 #ifdef CONFIG_ARCH_OMAP4
