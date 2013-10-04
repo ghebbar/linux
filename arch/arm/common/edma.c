@@ -1921,7 +1921,10 @@ static int edma_pm_resume(struct device *dev)
 	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(edma_pm_ops, edma_pm_suspend, edma_pm_resume);
+static struct dev_pm_ops edma_pm_ops = {
+	.suspend_noirq = edma_pm_suspend,
+	.resume_noirq = edma_pm_resume,
+};
 
 static struct platform_driver edma_driver = {
 	.driver = {
@@ -1937,4 +1940,3 @@ static int __init edma_init(void)
 	return platform_driver_probe(&edma_driver, edma_probe);
 }
 arch_initcall(edma_init);
-
