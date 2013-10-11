@@ -73,6 +73,7 @@ config SOC_AM33XX
 	select MAILBOX if PM
 	select MULTI_IRQ_HANDLER
 	select ARCH_HAS_RESET_CONTROLLER
+	select RESET_AMX3
 	select OMAP_MBOX_FWK if PM
 	select OMAP2PLUS_MBOX if PM
 
@@ -88,6 +89,7 @@ config SOC_AM43XX
 	select MACH_OMAP_GENERIC
 	select MIGHT_HAVE_CACHE_L2X0
 	select ARCH_HAS_RESET_CONTROLLER
+	select RESET_AMX3
 
 config ARCH_OMAP2PLUS
 	bool
