@@ -368,6 +368,7 @@ int __init am33xx_pm_init(void)
 			goto err;
 		}
 
+		susp_params.scu_virt_pwr_ctrl = (scu_base+8);
 		susp_params.l2_base_virt = omap4_get_l2cache_base();
 		susp_params.cpu_id = 0x2;
 	}

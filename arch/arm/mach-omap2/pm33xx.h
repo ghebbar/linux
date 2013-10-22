@@ -41,6 +41,7 @@ struct am33xx_suspend_params {
 	void __iomem *dram_sync;
 	void __iomem *l2_base_virt;
 	u32 cpu_id;
+	void __iomem *scu_virt_pwr_ctrl;
 };
 
 #endif

@@ -60,7 +60,7 @@
 ENTRY(am33xx_do_wfi)
 	stmfd	sp!, {r4 - r11, lr}	@ save registers on stack
 
-	ldm	r0, {r1-r5}		@ gather values passed
+	ldm	r0, {r1-r6}		@ gather values passed
 
 	/* Save the values passed */
 	str	r1, emif_addr_virt
@@ -68,6 +68,7 @@ ENTRY(am33xx_do_wfi)
 	str	r3, dram_sync_word
 	str	r4, l2_base_virt
 	str	r5, cpu_id
+	str	r6, am43xx_virt_scu_address
 
 	/*
 	 * Flush all data from the L1 and L2 data cache before disabling
@@ -255,6 +256,14 @@ wait_emif_disable:
 	str	r2, [r1]
 
 	/*
+	 * Put SCU to POWER-OFF
+	 */
+	ldr	r1, am43xx_virt_scu_address
+	ldr	r2, [r1]
+	orr	r2, r2, #0x03
+	str	r2, [r1]
+
+	/*
 	 * Execute a barrier instruction to ensure that all cache,
 	 * TLB and branch predictor maintenance operations issued
 	 * have completed.
@@ -293,7 +302,6 @@ wait_emif_disable:
 	nop
 
 	/* We come here in case of an abort due to a late interrupt */
-
 	ldr	r0, cpu_id
 	cmp	r0, #0x1
 	ldreq	r1, am33xx_virt_mpu_clkstctrl
@@ -521,6 +529,8 @@ am43xx_virt_emif_clkctrl:
 am43xx_phys_emif_clkctrl:
 	.word	(AM43XX_CM_BASE + AM43XX_CM_PER_INST + \
 		 AM43XX_CM_PER_EMIF_CLKCTRL_OFFSET)
+am43xx_virt_scu_address:
+	.word	0xDEADBEEF
 
 module_disabled_val:
 	.word	0x30000
