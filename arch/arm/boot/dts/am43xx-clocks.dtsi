@@ -117,11 +117,9 @@ dpll_mpu_m2_ck: dpll_mpu_m2_ck@44df2d70 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_mpu_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2d70 0x4>;
 	bit-mask = <0x1f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_ddr_ck: dpll_ddr_ck@44df2da0 {
