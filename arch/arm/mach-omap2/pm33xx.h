@@ -59,7 +59,7 @@ struct am33xx_suspend_params {
 #define M3_STATE_MSG_FOR_LP		3
 #define M3_STATE_MSG_FOR_RESET	4
 
-#define AM33XX_OCMC_END			0x40310000
+#define AM33XX_OCMC_END			0x40340000
 #define AM33XX_EMIF_BASE		0x4C000000
 
 #define AM43XX_CM_BASE			0x44DF0000
@@ -67,7 +67,7 @@ struct am33xx_suspend_params {
 #define AM43XX_CM_REGADDR(inst, reg)				\
 	AM33XX_L4_WK_IO_ADDRESS(AM43XX_CM_BASE + (inst) + (reg))
 
-#define AM43XX_CM_PER_INST		0x6000
+#define AM43XX_CM_PER_INST		0x8800
 #define AM43XX_CM_PER_EMIF_CLKCTRL_OFFSET 0x0720
 
 #define AM43XX_PM_MPU_PWRSTCTRL AM43XX_CM_REGADDR(0x0300, 0x00)
