@@ -256,6 +256,7 @@ wait_emif_disable:
 	dmb
 	isb
 
+
 	/*
 	 * Execute a WFI instruction and wait until the
 	 * STANDBYWFI output is asserted to indicate that the
@@ -404,9 +405,9 @@ wait_emif_enable1:
 	str	r1, [r0, #EMIF_SDRAM_OUTPUT_IMPEDANCE_CALIBRATION_CONFIG]
 
 	/* Write to SDRAM_CONFIG only for DDR2 */
-	ldr	r2, mem_type
-	cmp	r2, #MEM_TYPE_DDR2
-	bne	resume_to_ddr
+	//ldr	r2, mem_type
+	//cmp	r2, #MEM_TYPE_DDR2
+	//bne	resume_to_ddr
 
 	/*
 	 * A write to SDRAM CONFIG register triggers
@@ -551,28 +552,42 @@ cpu_id:
 	.word	0xDEADBEE4
 emif_addr_virt:
 	.word	0xDEADBEE5
-emif_rd_lat_val:
-	.word	0xDEADBEE6
-emif_timing1_val:
-	.word	0xDEADBEE7
-emif_timing2_val:
-	.word	0xDEADBEE8
-emif_timing3_val:
-	.word	0xDEADBEE9
 emif_sdcfg_val:
+	.word	0x808012BA
+emif_timing1_val:
+	.word	0xEA86B412
+emif_timing2_val:
+	.word	0x1025094A
+emif_timing3_val:
+	.word	0x0F6BA22F
+emif_rd_lat_val:
 	.word	0xDEADBEEA
 emif_ref_ctrl_val:
-	.word	0xDEADBEEB
+	.word	0x0000040D
 emif_zqcfg_val:
-	.word	0xDEADBEEC
+	.word	0xD00fFFFF
 emif_pmcr_val:
-	.word	0xDEADBEED
+	.word	0x00000000
 emif_pmcr_shdw_val:
-	.word	0xDEADBEEE
+	.word	0x00000000
 emif_lpddr2_mode_reg_data:
 	.word	0xDEADBEEF
 emif_lpddr2_mode_reg_cfg:
 	.word	0xDEADBEE0
+
+emif_ddr_phy_ctlr_1:
+	.word	0x0E084006
+
+emif_ddr_ext_phy_ctrl_1:
+	.word	0x04010040
+emif_ddr_ext_phy_ctrl_2:
+	.word	0x00500050
+emif_ddr_ext_phy_ctrl_3:
+	.word	0x00500050
+emif_ddr_ext_phy_ctrl_4:
+	.word	0x00500050
+emif_ddr_ext_phy_ctrl_5:
+	.word	0x00500050
 
 
 ENTRY(am33xx_do_wfi_sz)
