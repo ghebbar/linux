@@ -59,7 +59,7 @@ struct am33xx_suspend_params {
 #define M3_STATE_MSG_FOR_LP		3
 #define M3_STATE_MSG_FOR_RESET	4
 
-#define AM33XX_OCMC_END			0x40340000
+#define AM33XX_OCMC_END			0x40310000
 #define AM33XX_EMIF_BASE		0x4C000000
 
 #define AM43XX_CM_BASE			0x44DF0000
