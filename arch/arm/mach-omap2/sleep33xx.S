@@ -176,6 +176,10 @@ skip_l2_invalidate:
 	str	r1, emif_zqcfg_val
 	ldr	r1, [r0, #EMIF_DDR_PHY_CTRL_1]
 	str	r1, emif_rd_lat_val
+	ldr	r1, [r0, #EMIF_LPDDR2_MODE_REG_DATA]
+	str	r1, emif_lpddr2_mode_reg_data
+	ldr	r1, [r0, #EMIF_LPDDR2_MODE_REG_CONFIG]
+	str	r1, emif_lpddr2_mode_reg_cfg
 
 	/* Put SDRAM in self-refresh */
 	ldr	r1, [r0, #EMIF_POWER_MANAGEMENT_CONTROL]
@@ -404,6 +408,11 @@ wait_emif_enable1:
 	str	r1, [r0, #EMIF_POWER_MANAGEMENT_CONTROL]
 	ldr	r1, emif_pmcr_shdw_val
 	str	r1, [r0, #EMIF_POWER_MANAGEMENT_CTRL_SHDW]
+	ldr	r1, emif_lpddr2_mode_reg_cfg
+	str	r1, [r0, #EMIF_LPDDR2_MODE_REG_CONFIG]
+	ldr	r1, emif_lpddr2_mode_reg_data
+	str	r1, [r0, #EMIF_LPDDR2_MODE_REG_DATA]
+
 
 	/*
 	 * Output impedence calib needed only for DDR3
@@ -553,34 +562,38 @@ l2_smc3:
 
 /* DDR related defines */
 dram_sync_word:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE1
 mem_type:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE2
 l2_base_virt:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE3
 cpu_id:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE4
 emif_addr_virt:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE5
 emif_rd_lat_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE6
 emif_timing1_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE7
 emif_timing2_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE8
 emif_timing3_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEE9
 emif_sdcfg_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEEA
 emif_ref_ctrl_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEEB
 emif_zqcfg_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEEC
 emif_pmcr_val:
-	.word	0xDEADBEEF
+	.word	0xDEADBEED
 emif_pmcr_shdw_val:
+	.word	0xDEADBEEE
+emif_lpddr2_mode_reg_data:
 	.word	0xDEADBEEF
+emif_lpddr2_mode_reg_cfg:
+	.word	0xDEADBEE0
 
-	.align 3
+
 ENTRY(am33xx_do_wfi_sz)
 	.word	. - am33xx_do_wfi
