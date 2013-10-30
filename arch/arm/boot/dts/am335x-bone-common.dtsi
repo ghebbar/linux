@@ -34,6 +34,15 @@
 			>;
 		};
 
+		user_leds_s1: user_leds_s1 {
+			pinctrl-single,pins = <
+				0x54 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
+				0x58 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a6.gpio1_22 */
+				0x5c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a7.gpio1_23 */
+				0x60 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a8.gpio1_24 */
+			>;
+		};
+
 		i2c0_pins: pinmux_i2c0_pins {
 			pinctrl-single,pins = <
 				0x188 (PIN_INPUT_PULLUP | MUX_MODE0)	/* i2c0_sda.i2c0_sda */
@@ -182,8 +191,9 @@
 	};
 
 	leds {
-		pinctrl-names = "default";
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&user_leds_s0>;
+		pinctrl-1 = <&user_leds_s1>;
 
 		compatible = "gpio-leds";
 
