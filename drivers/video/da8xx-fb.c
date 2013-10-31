@@ -39,6 +39,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/lcm.h>
+#include <linux/pinctrl/consumer.h>
 #include <video/of_display_timing.h>
 #include <video/da8xx-fb.h>
 
@@ -1556,6 +1557,9 @@ static int fb_probe(struct platform_device *device)
 		tmp_disp_clk = 0;
 	}
 
+	/* Optionaly enable pins to be muxed in and configured */
+	pinctrl_pm_select_default_state(&device->dev);
+
 	pm_runtime_enable(&device->dev);
 	pm_runtime_get_sync(&device->dev);
 
@@ -1824,12 +1828,18 @@ static int fb_suspend(struct platform_device *dev, pm_message_t state)
 	pm_runtime_put_sync(&dev->dev);
 	console_unlock();
 
+	/* Select sleep pin state */
+	pinctrl_pm_select_sleep_state(&dev->dev);
+
 	return 0;
 }
 static int fb_resume(struct platform_device *dev)
 {
 	struct fb_info *info = platform_get_drvdata(dev);
 	struct da8xx_fb_par *par = info->par;
+
+	/* Select default pin state */
+	pinctrl_pm_select_default_state(&dev->dev);
 
 	console_lock();
 	pm_runtime_get_sync(&dev->dev);
