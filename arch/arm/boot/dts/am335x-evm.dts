@@ -105,6 +105,12 @@
 			>;
 		};
 
+		ecap0_pins_s1: ecap0_pins_s1 {
+			pinctrl-single,pins = <
+				0x164  (PULL_DISABLE | MUX_MODE7)	/* eCAP0_in_PWM0_out.eCAP0_in_PWM0_out */
+			>;
+		};
+
 		cpsw_default: cpsw_default {
 			pinctrl-single,pins = <
 				/* Slave 1 */
@@ -352,8 +358,9 @@
 
 			ecap0: ecap@48300100 {
 				status = "okay";
-				pinctrl-names = "default";
+				pinctrl-names = "default", "sleep";
 				pinctrl-0 = <&ecap0_pins>;
+				pinctrl-1 = <&ecap0_pins_s1>;
 			};
 		};
 

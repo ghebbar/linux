@@ -121,6 +121,12 @@
 			>;
 		};
 
+		ecap2_pins_s1: ecap2_pins_s1 {
+			pinctrl-single,pins = <
+				0x19c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkr.ecap2_in_pwm2_out */
+			>;
+		};
+
 		cpsw_default: cpsw_default {
 			pinctrl-single,pins = <
 				/* Slave 1 */
@@ -326,8 +332,9 @@
 
 			ecap2: ecap@48304100 {
 				status = "okay";
-				pinctrl-names = "default";
+				pinctrl-names = "default", "sleep";
 				pinctrl-0 = <&ecap2_pins>;
+				pinctrl-1 = <&ecap2_pins_s1>;
 			};
 		};
 
