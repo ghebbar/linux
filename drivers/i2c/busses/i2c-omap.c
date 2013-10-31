@@ -42,6 +42,7 @@
 #include <linux/slab.h>
 #include <linux/i2c-omap.h>
 #include <linux/pm_runtime.h>
+#include <linux/pinctrl/consumer.h>
 
 /* I2C controller revisions */
 #define OMAP_I2C_OMAP1_REV_2		0x20
@@ -639,6 +640,9 @@ omap_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	if (IS_ERR_VALUE(r))
 		goto out;
 
+	/* Optionaly enable pins to be muxed in and configured */
+	pinctrl_pm_select_default_state(dev->dev);
+
 	r = omap_i2c_wait_for_bb(dev);
 	if (r < 0)
 		goto out;
@@ -661,6 +665,9 @@ omap_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		dev->set_mpu_wkup_lat(dev->dev, -1);
 
 out:
+	/* Optionally let pins go into idle state */
+	pinctrl_pm_select_idle_state(dev->dev);
+
 	pm_runtime_mark_last_busy(dev->dev);
 	pm_runtime_put_autosuspend(dev->dev);
 	return r;
@@ -1121,6 +1128,11 @@ omap_i2c_probe(struct platform_device *pdev)
 	dev->dev = &pdev->dev;
 	dev->irq = irq;
 
+	/* Select default pin state */
+	pinctrl_pm_select_default_state(&pdev->dev);
+	/* If possible, let's go to idle until the first transfer */
+	pinctrl_pm_select_idle_state(&pdev->dev);
+
 	spin_lock_init(&dev->lock);
 
 	platform_set_drvdata(pdev, dev);
@@ -1287,6 +1299,8 @@ static int omap_i2c_runtime_suspend(struct device *dev)
 		omap_i2c_read_reg(_dev, OMAP_I2C_STAT_REG);
 	}
 
+	pinctrl_pm_select_idle_state(dev);
+
 	return 0;
 }
 
@@ -1298,13 +1312,36 @@ static int omap_i2c_runtime_resume(struct device *dev)
 	if (!_dev->regs)
 		return 0;
 
+	/* go to the default state */
+	pinctrl_pm_select_default_state(dev);
+
 	__omap_i2c_init(_dev);
 
 	return 0;
 }
 #endif /* CONFIG_PM_RUNTIME */
 
+#ifdef CONFIG_PM_SLEEP
+static int omap_i2c_suspend(struct device *dev)
+{
+	pinctrl_pm_select_sleep_state(dev);
+
+	return 0;
+}
+
+static int omap_i2c_resume(struct device *dev)
+{
+	/* First go to the default state */
+	pinctrl_pm_select_default_state(dev);
+	/* Then let's idle the pins until the next transfer happens */
+	pinctrl_pm_select_idle_state(dev);
+
+	return 0;
+}
+#endif
+
 static struct dev_pm_ops omap_i2c_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(omap_i2c_suspend, omap_i2c_resume)
 	SET_RUNTIME_PM_OPS(omap_i2c_runtime_suspend,
 			   omap_i2c_runtime_resume, NULL)
 };
