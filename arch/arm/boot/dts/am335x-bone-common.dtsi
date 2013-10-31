@@ -119,7 +119,27 @@
 
 		mmc1_pins: pinmux_mmc1_pins {
 			pinctrl-single,pins = <
-				0x160 (PIN_INPUT | MUX_MODE7) /* GPIO0_6 */
+				0x0F0 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat3.mmc0_dat3 */
+				0x0F4 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat2.mmc0_dat2 */
+				0x0F8 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat1.mmc0_dat1 */
+				0x0FC (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat0.mmc0_dat0 */
+				0x100 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_clk.mmc0_clk */
+				0x104 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_cmd.mmc0_cmd */
+				0x1A0 (PIN_INPUT_PULLUP | MUX_MODE7)	/* mcasp0_aclkr.gpio3_18 */
+				0x160 (PIN_INPUT | MUX_MODE7)		/* GPIO0_6 */
+			>;
+		};
+
+		mmc1_pins_s1: mmc1_pins_s1 {
+			pinctrl-single,pins = <
+				0x0F0 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mmc0_dat3.mmc0_dat3 */
+				0x0F4 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mmc0_dat2.mmc0_dat2 */
+				0x0F8 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mmc0_dat1.mmc0_dat1 */
+				0x0FC (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mmc0_dat0.mmc0_dat0 */
+				0x100 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mmc0_clk.mmc0_clk */
+				0x104 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mmc0_cmd.mmc0_cmd */
+				0x1A0 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_aclkr.gpio3_18 */
+				0x160 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* GPIO0_6 */
 			>;
 		};
 
@@ -334,8 +354,9 @@
 &mmc1 {
 	status = "okay";
 	bus-width = <0x4>;
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&mmc1_pins>;
+	pinctrl-1 = <&mmc1_pins_s1>;
 	cd-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
 	cd-inverted;
 };
