@@ -1868,7 +1868,6 @@ static int omap_hsmmc_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	dma_cap_mask_t mask;
 	unsigned tx_req, rx_req;
-	struct pinctrl *pinctrl;
 	u32 revision;
 
 	match = of_match_device(of_match_ptr(omap_mmc_of_match), &pdev->dev);
@@ -2094,11 +2093,6 @@ static int omap_hsmmc_probe(struct platform_device *pdev)
 
 	omap_hsmmc_disable_irq(host);
 
-	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
-	if (IS_ERR(pinctrl))
-		dev_warn(&pdev->dev,
-			"pins are not configured from the driver\n");
-
 	omap_hsmmc_protect_card(host);
 
 	mmc_add_host(mmc);
@@ -2245,6 +2239,10 @@ static int omap_hsmmc_suspend(struct device *dev)
 		clk_disable_unprepare(host->dbclk);
 err:
 	pm_runtime_put_sync(host->dev);
+
+	/* Select sleep pin state */
+	pinctrl_pm_select_sleep_state(host->dev);
+
 	return ret;
 }
 
@@ -2259,6 +2257,11 @@ static int omap_hsmmc_resume(struct device *dev)
 
 	if (host && !host->suspended)
 		return 0;
+
+	/* Select default pin state */
+	pinctrl_pm_select_default_state(host->dev);
+	/* Then let's idle the pins until the next transfer happens */
+	pinctrl_pm_select_idle_state(host->dev);
 
 	pm_runtime_get_sync(host->dev);
 
@@ -2297,6 +2300,9 @@ static int omap_hsmmc_runtime_suspend(struct device *dev)
 	omap_hsmmc_context_save(host);
 	dev_dbg(dev, "disabled\n");
 
+	/* Optionally let pins go into idle state */
+	pinctrl_pm_select_idle_state(host->dev);
+
 	return 0;
 }
 
@@ -2305,6 +2311,10 @@ static int omap_hsmmc_runtime_resume(struct device *dev)
 	struct omap_hsmmc_host *host;
 
 	host = platform_get_drvdata(to_platform_device(dev));
+
+	/* go to the default state */
+	pinctrl_pm_select_default_state(host->dev);
+
 	omap_hsmmc_context_restore(host);
 	dev_dbg(dev, "enabled\n");
 
