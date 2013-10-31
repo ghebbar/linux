@@ -144,6 +144,11 @@ static inline unsigned int edma_read_array(unsigned ctlr, int offset, int i)
 {
 	return edma_read(ctlr, offset + (i << 2));
 }
+static inline unsigned int edma_read_array2(unsigned ctlr, int offset, int i,
+		int j)
+{
+	return edma_read(ctlr, offset + ((i * 2 + j) << 2));
+}
 static inline void edma_write_array(unsigned ctlr, int offset, int i,
 		unsigned val)
 {
@@ -263,6 +268,9 @@ struct edma {
 		struct edmacc_param *prm_set;
 		unsigned int *ch_map;               /* 64 registers */
 		unsigned int *que_num;              /* 8 registers */
+		unsigned int *drae;
+		unsigned int *draeh;
+		unsigned int *qrae;
 		unsigned int sh_esr;
 		unsigned int sh_esrh;
 		unsigned int sh_eesr;
@@ -1707,6 +1715,15 @@ static int edma_probe(struct platform_device *pdev)
 				 edma_cc[j]->num_channels), GFP_KERNEL);
 		edma_cc[j]->context.que_num =
 			kzalloc((sizeof(unsigned int) * 8), GFP_KERNEL);
+		edma_cc[j]->context.drae = kzalloc((sizeof(unsigned int) *
+						    edma_cc[j]->num_region),
+						    GFP_KERNEL);
+		edma_cc[j]->context.draeh = kzalloc((sizeof(unsigned int) *
+						     edma_cc[j]->num_region),
+						     GFP_KERNEL);
+		edma_cc[j]->context.qrae = kzalloc((sizeof(unsigned int) *
+						    edma_cc[j]->num_region),
+						    GFP_KERNEL);
 
 		/* Mark all channels as unused */
 		memset(edma_cc[j]->edma_unused, 0xff,
@@ -1834,6 +1851,18 @@ static int edma_pm_suspend(struct device *dev)
 			ecc->context.que_num[j] =
 				edma_read_array(i, EDMA_DMAQNUM, j);
 
+		for (j = 0; j < ecc->num_region; j++) {
+			/* backup DMA DMA Region Access Enable data */
+			ecc->context.drae[j] = edma_read_array2(i,
+							EDMA_DRAE, j, 0);
+			ecc->context.draeh[j] = edma_read_array2(i,
+							EDMA_DRAE, j, 1);
+
+			/* backup DMA QDMA Region Access Enable data */
+			ecc->context.qrae[j] = edma_read_array(i,
+							EDMA_QRAE, j);
+		}
+
 		/* backup DMA shadow Event Set data */
 		ecc->context.sh_esr = edma_shadow0_read_array(i, SH_ESR, 0);
 		ecc->context.sh_esrh = edma_shadow0_read_array(i, SH_ESR, 1);
@@ -1886,6 +1915,18 @@ static int edma_pm_resume(struct device *dev)
 		for (j = 0; j < 8; j++) {
 			edma_write_array(i, EDMA_DMAQNUM, j,
 					 ecc->context.que_num[j]);
+		}
+
+		for (j = 0; j < ecc->num_region; j++) {
+			/* restore DMA DMA Region Access Enable data */
+			edma_write_array2(i, EDMA_DRAE, j, 0,
+					  ecc->context.drae[j]);
+			edma_write_array2(i, EDMA_DRAE, j, 1,
+					  ecc->context.draeh[j]);
+
+			/* restore DMA QDMA Region Access Enable data */
+			edma_write_array(i, EDMA_QRAE, j,
+					 ecc->context.qrae[j]);
 		}
 
 		/* restore DMA shadow Event Set data */
