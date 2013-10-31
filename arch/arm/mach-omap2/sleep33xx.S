@@ -217,26 +217,6 @@ wait_emif_disable:
 	bne	wait_emif_disable
 
 	/*
-	 * Configure MPU PWRDM for sleep
-	 */
-
-        ldr     r0, cpu_id
-        cmp     r0, #0x1
-        ldreq   r1, am33xx_virt_mpu_pwrstctrl
-        ldrne   r1, am43xx_virt_mpu_pwrstctrl
-	ldr	r2, [r1]
-	bic	r2, r2, #0x03
-	str	r2, [r1]
-
-        ldr     r0, cpu_id
-        cmp     r0, #0x1
-        ldreq   r1, am33xx_virt_mpu_pwrstctrl
-        ldrne   r1, am43xx_virt_mpu_pwrstctrl
-	ldr	r2, [r1]
-	ORR r2, r2, #0x10
-	str	r2, [r1]
-
-	/*
 	 * For the MPU WFI to be registered as an interrupt
 	 * to WKUP_M3, MPU_CLKCTRL.MODULEMODE needs to be set
 	 * to DISABLED
