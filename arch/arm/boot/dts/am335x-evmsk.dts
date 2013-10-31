@@ -215,6 +215,18 @@
 				0x144 (PIN_INPUT_PULLDOWN | MUX_MODE4) /* rmii1_ref_clk.mcasp1_axr3 */
 			>;
 		};
+
+		usb0_pins_s0: usb0_pins_s0 {
+			pinctrl-single,pins = <
+				0x21C (PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* usb0_drvvbus.usb0_drvvbus */
+			>;
+		};
+
+		usb0_pins_s1: usb0_pins_s1 {
+			pinctrl-single,pins = <
+				0x21C (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* usb0_drvvbus.usb0_drvvbus */
+			>;
+		};
 	};
 
 	ocp {
@@ -293,6 +305,9 @@
 			};
 
 			usb@47401000 {
+				pinctrl-names = "default", "sleep";
+				pinctrl-0 = <&usb0_pins_s0>;
+				pinctrl-1 = <&usb0_pins_s1>;
 				status = "okay";
 			};
 
