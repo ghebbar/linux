@@ -39,6 +39,7 @@
 #include <linux/usb/usb_phy_gen_xceiv.h>
 #include <linux/platform_data/usb-omap.h>
 #include <linux/sizes.h>
+#include <linux/pinctrl/consumer.h>
 
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -604,6 +605,9 @@ static int dsps_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	/* Optionaly enable pins to be muxed in and configured */
+	pinctrl_pm_select_default_state(&pdev->dev);
+
 	glue->dev = &pdev->dev;
 	glue->wrp = wrp;
 
@@ -642,6 +646,26 @@ static int dsps_remove(struct platform_device *pdev)
 	kfree(glue);
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static int dsps_suspend(struct device *dev)
+{
+	/* Select sleep pin state */
+	pinctrl_pm_select_sleep_state(dev);
+
+	return 0;
+}
+
+static int dsps_resume(struct device *dev)
+{
+	/* Select default pin state */
+	pinctrl_pm_select_default_state(dev);
+
+	return 0;
+}
+#endif
+
+static SIMPLE_DEV_PM_OPS(dsps_pm_ops, dsps_suspend, dsps_resume);
 
 static const struct dsps_musb_wrapper am33xx_driver_data = {
 	.revision		= 0x00,
@@ -685,6 +709,7 @@ static struct platform_driver dsps_usbss_driver = {
 	.driver         = {
 		.name   = "musb-dsps",
 		.of_match_table	= musb_dsps_of_match,
+		.pm	= &dsps_pm_ops,
 	},
 };
 
