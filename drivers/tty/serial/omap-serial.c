@@ -694,7 +694,7 @@ static int serial_omap_startup(struct uart_port *port)
 	/*
 	 * Allocate the IRQ
 	 */
-	retval = request_irq(up->port.irq, serial_omap_irq, up->port.irqflags | IRQF_NO_SUSPEND,
+	retval = request_irq(up->port.irq, serial_omap_irq, up->port.irqflags,
 				up->name, up);
 	if (retval)
 		return retval;
