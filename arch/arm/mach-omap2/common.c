@@ -45,7 +45,6 @@ void __init am33xx_reserve(void)
 {
 	am33xx_size = ALIGN(PAGE_SIZE, SZ_1M);
 	am33xx_paddr = arm_memblock_steal(am33xx_size, SZ_1M);
-	omap_reserve();
 }
 
 void __iomem *am33xx_dram_sync;
