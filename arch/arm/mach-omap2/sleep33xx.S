@@ -405,9 +405,9 @@ wait_emif_enable1:
 	str	r1, [r0, #EMIF_SDRAM_OUTPUT_IMPEDANCE_CALIBRATION_CONFIG]
 
 	/* Write to SDRAM_CONFIG only for DDR2 */
-	//ldr	r2, mem_type
-	//cmp	r2, #MEM_TYPE_DDR2
-	//bne	resume_to_ddr
+	ldr	r2, mem_type
+	cmp	r2, #MEM_TYPE_DDR2
+	bne	resume_to_ddr
 
 	/*
 	 * A write to SDRAM CONFIG register triggers

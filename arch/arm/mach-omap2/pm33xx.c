@@ -313,7 +313,6 @@ void am33xx_push_sram_idle(void)
 {
 	am33xx_do_wfi_sram = (void *)omap_sram_push
 					(am33xx_do_wfi, am33xx_do_wfi_sz);
-	pr_info("SRAM PUSH ADDR: %p\n", am33xx_do_wfi_sram);
 }
 
 static int __init am33xx_map_emif(void)
