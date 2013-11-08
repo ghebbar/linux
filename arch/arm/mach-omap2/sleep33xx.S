@@ -543,37 +543,37 @@ l2_smc3:
 
 /* DDR related defines */
 dram_sync_word:
-	.word	0xDEADBEE1
+	.word	0xDEADBEEF
 mem_type:
-	.word	0xDEADBEE2
+	.word	0xDEADBEEF
 l2_base_virt:
-	.word	0xDEADBEE3
+	.word	0xDEADBEEF
 cpu_id:
-	.word	0xDEADBEE4
+	.word	0xDEADBEEF
 emif_addr_virt:
-	.word	0xDEADBEE5
+	.word	0xDEADBEEF
 emif_sdcfg_val:
-	.word	0x808012BA
+	.word	0xDEADBEEF
 emif_timing1_val:
-	.word	0xEA86B412
+	.word	0xDEADBEEF
 emif_timing2_val:
-	.word	0x1025094A
+	.word	0xDEADBEEF
 emif_timing3_val:
-	.word	0x0F6BA22F
+	.word	0xDEADBEEF
 emif_rd_lat_val:
-	.word	0xDEADBEEA
+	.word	0xDEADBEEF
 emif_ref_ctrl_val:
-	.word	0x0000040D
+	.word	0xDEADBEEF
 emif_zqcfg_val:
-	.word	0xD00fFFFF
+	.word	0xDEADBEEF
 emif_pmcr_val:
-	.word	0x00000000
+	.word	0xDEADBEEF
 emif_pmcr_shdw_val:
-	.word	0x00000000
+	.word	0xDEADBEEF
 emif_lpddr2_mode_reg_data:
 	.word	0xDEADBEEF
 emif_lpddr2_mode_reg_cfg:
-	.word	0xDEADBEE0
+	.word	0xDEADBEEF
 
 emif_ddr_phy_ctlr_1:
 	.word	0x0E084006
