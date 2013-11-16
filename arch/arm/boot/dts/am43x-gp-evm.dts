@@ -186,6 +186,7 @@
 };
 
 &gpio0 {
+	ti,no-reset;
 	status = "okay";
 };
 
