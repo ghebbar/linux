@@ -353,6 +353,11 @@
 	};
 };
 
+&wkup_m3 {
+	ti,needs-vtt-toggle;
+	vtt-gpio-pin = <7>;
+};
+
 #include "tps65910.dtsi"
 
 &tps {
