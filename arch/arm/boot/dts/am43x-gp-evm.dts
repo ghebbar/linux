@@ -127,6 +127,11 @@
 	};
 };
 
+&wkup_m3 {
+	ti,needs-vtt-toggle;
+	vtt-gpio-pin = <22>;
+};
+
 &mmc1 {
 	status = "okay";
 	vmmc-supply = <&vmmcsd_fixed>;
