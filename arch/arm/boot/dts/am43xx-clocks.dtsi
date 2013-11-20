@@ -76,33 +76,27 @@ dpll_core_m4_ck: dpll_core_m4_ck@44df2d38 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_core_x2_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2d38 0x4>;
 	bit-mask = <0x1f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_core_m5_ck: dpll_core_m5_ck@44df2d3c {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_core_x2_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2d3c 0x4>;
 	bit-mask = <0x1f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_core_m6_ck: dpll_core_m6_ck@44df2d40 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_core_x2_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2d40 0x4>;
 	bit-mask = <0x1f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_mpu_ck: dpll_mpu_ck@44df2d60 {
@@ -134,11 +128,9 @@ dpll_ddr_m2_ck: dpll_ddr_m2_ck@44df2db0 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_ddr_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2db0 0x4>;
 	bit-mask = <0x1f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_disp_ck: dpll_disp_ck@44df2e20 {
@@ -153,11 +145,9 @@ dpll_disp_m2_ck: dpll_disp_m2_ck@44df2e30 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_disp_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2e30 0x4>;
 	bit-mask = <0x1f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_per_ck: dpll_per_ck@44df2de0 {
@@ -172,11 +162,9 @@ dpll_per_m2_ck: dpll_per_m2_ck@44df2df0 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_per_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2df0 0x4>;
 	bit-mask = <0x7f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_per_m2_div4_wkupdm_ck: dpll_per_m2_div4_wkupdm_ck {
@@ -548,11 +536,9 @@ dpll_extdev_m2_ck: dpll_extdev_m2_ck@44df2e70 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_extdev_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2e70 0x4>;
 	bit-mask = <0x7f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 mux_synctimer32k_ck: mux_synctimer32k_ck@44df4230 {
@@ -629,11 +615,9 @@ dpll_ddr_m4_ck: dpll_ddr_m4_ck@44df2db8 {
 	#clock-cells = <0>;
 	compatible = "ti,divider-clock";
 	clocks = <&dpll_ddr_x2_ck>;
-	ti,autoidle-shift = <8>;
 	reg = <0x44df2db8 0x4>;
 	bit-mask = <0x1f>;
 	index-starts-at-one;
-	ti,autoidle-low;
 };
 
 dpll_per_clkdcoldo: dpll_per_clkdcoldo {
